@@ -38,6 +38,7 @@ dist/
 coverage/
 .npm/
 .pnpm-store/
+*.tsbuildinfo
 
 # Logs
 logs/
