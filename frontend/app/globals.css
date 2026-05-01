@@ -31,3 +31,134 @@ body {
   padding: 16px;
   flex: 1;
 }
+
+.app-shell__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.role-switcher {
+  position: relative;
+}
+
+.role-switcher__current,
+.role-switcher__menu button {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 4px;
+}
+
+.role-switcher__menu {
+  position: absolute;
+  right: 0;
+  top: 110%;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  background: Canvas;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 180px;
+}
+
+.role-switcher__menu button {
+  width: 100%;
+  text-align: left;
+}
+
+.role-switcher__error {
+  color: #b00020;
+  font-size: 0.875rem;
+}
+
+.form-grid {
+  display: grid;
+  gap: 12px;
+  max-width: 480px;
+}
+
+.form-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.875rem;
+}
+
+.form-grid input,
+.form-grid select {
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  font: inherit;
+}
+
+.btn {
+  padding: 8px 14px;
+  border: 0;
+  background: #1a73e8;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  font: inherit;
+}
+
+.btn--ghost {
+  background: transparent;
+  color: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.btn--danger {
+  background: #b00020;
+  color: white;
+}
+
+.alert {
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 0.875rem;
+}
+
+.alert--error {
+  background: rgba(176, 0, 32, 0.1);
+  color: #b00020;
+}
+
+.alert--ok {
+  background: rgba(26, 115, 232, 0.1);
+  color: #1a73e8;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.table th,
+.table td {
+  padding: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  text-align: left;
+}
+
+.kpi-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.kpi-card {
+  padding: 12px 16px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  min-width: 160px;
+}

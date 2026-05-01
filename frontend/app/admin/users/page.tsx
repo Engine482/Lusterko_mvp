@@ -1,0 +1,100 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import { adminApi, type AdminUser } from "@/lib/api/admin";
+import { describeError } from "@/lib/api/utils";
+import type { Role, UserStatus } from "@/types/enums";
+
+const ROLES: Role[] = ["soldier", "commander", "medic_psych", "admin"];
+const STATUSES: UserStatus[] = ["active", "inactive"];
+
+// Wireframes P0 §8.2 — Users List.
+export default function AdminUsersPage() {
+  const [items, setItems] = useState<AdminUser[]>([]);
+  const [total, setTotal] = useState(0);
+  const [error, setError] = useState<string | null>(null);
+  const [filterStatus, setFilterStatus] = useState<UserStatus | "">("");
+  const [filterRole, setFilterRole] = useState<Role | "">("");
+
+  useEffect(() => {
+    let cancelled = false;
+    adminApi
+      .listUsers({
+        status: filterStatus || undefined,
+        role: filterRole || undefined,
+        page_size: 100,
+      })
+      .then((res) => {
+        if (cancelled) return;
+        setItems(res.items);
+        setTotal(res.total);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(describeError(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filterStatus, filterRole]);
+
+  return (
+    <section>
+      <h1>Користувачі</h1>
+      <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value as UserStatus | "")}
+        >
+          <option value="">Усі статуси</option>
+          {STATUSES.map((s) => (
+            <option key={s} value={s}>
+              {s}
+            </option>
+          ))}
+        </select>
+        <select
+          value={filterRole}
+          onChange={(e) => setFilterRole(e.target.value as Role | "")}
+        >
+          <option value="">Усі ролі</option>
+          {ROLES.map((r) => (
+            <option key={r} value={r}>
+              {r}
+            </option>
+          ))}
+        </select>
+        <Link className="btn" href="/admin/users/new">
+          + Новий користувач
+        </Link>
+      </div>
+      {error && <div className="alert alert--error">{error}</div>}
+      <table className="table">
+        <thead>
+          <tr>
+            <th>Ім&apos;я</th>
+            <th>Email</th>
+            <th>Ролі</th>
+            <th>Статус</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((u) => (
+            <tr key={u.id}>
+              <td>{u.full_name}</td>
+              <td>{u.email}</td>
+              <td>{u.roles.join(", ")}</td>
+              <td>{u.status}</td>
+              <td>
+                <Link href={`/admin/users/${u.id}`}>Відкрити</Link>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p style={{ fontSize: "0.875rem", marginTop: 8 }}>Всього: {total}</p>
+    </section>
+  );
+}

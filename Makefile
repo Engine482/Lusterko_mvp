@@ -1,4 +1,4 @@
-.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-migrate db-revision seed mcp-list
+.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-test-up db-migrate db-revision seed mcp-list
 
 setup: setup-backend setup-frontend
 
@@ -15,7 +15,10 @@ lint:
 	cd frontend && pnpm exec tsc --noEmit
 
 test:
-	cd backend && uv run pytest -q
+	cd backend && TEST_DATABASE_URL=$${TEST_DATABASE_URL:-postgresql://lusterko:change_me@localhost:5432/lusterko_test} uv run pytest -q
+
+db-test-up:
+	docker exec lusterko-postgres-dev psql -U lusterko -d postgres -c "create database lusterko_test owner lusterko" || true
 
 run-backend:
 	cd backend && uv run uvicorn app.main:app --host $${BACKEND_HOST:-127.0.0.1} --port $${BACKEND_PORT:-8001} --reload
