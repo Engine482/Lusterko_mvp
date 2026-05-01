@@ -6,6 +6,9 @@ tables land in later sprints (Backlog TASK-2001+, TASK-3001+, TASK-4001+, TASK-5
 
 from app.models.audit_log import AuditLog
 from app.models.auth_invite import AuthInvite
+from app.models.baseline_event import BaselineEvent
+from app.models.baseline_profile import BaselineProfile
+from app.models.daily_checkin import DailyCheckin
 from app.models.unit import Unit
 from app.models.user import User
 from app.models.user_identity import UserIdentity
@@ -15,6 +18,9 @@ from app.models.user_session import UserSession
 __all__ = [
     "AuditLog",
     "AuthInvite",
+    "BaselineEvent",
+    "BaselineProfile",
+    "DailyCheckin",
     "Unit",
     "User",
     "UserIdentity",
