@@ -158,4 +158,6 @@ AuditEventType = Literal[
     "risk_recomputed",
     "commander_case_viewed",
     "cross_unit_access_denied",
+    "medic_case_viewed",
+    "denied_sensitive_access",
 ]

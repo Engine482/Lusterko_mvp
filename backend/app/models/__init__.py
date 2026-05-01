@@ -8,6 +8,8 @@ from app.models.audit_log import AuditLog
 from app.models.auth_invite import AuthInvite
 from app.models.baseline_event import BaselineEvent
 from app.models.baseline_profile import BaselineProfile
+from app.models.case_review import CaseReview
+from app.models.case_review_note import CaseReviewNote
 from app.models.comment_ai_analysis import CommentAiAnalysis
 from app.models.daily_checkin import DailyCheckin
 from app.models.go_no_go_test import GoNoGoTest
@@ -28,6 +30,8 @@ __all__ = [
     "AuthInvite",
     "BaselineEvent",
     "BaselineProfile",
+    "CaseReview",
+    "CaseReviewNote",
     "CommentAiAnalysis",
     "DailyCheckin",
     "GoNoGoTest",

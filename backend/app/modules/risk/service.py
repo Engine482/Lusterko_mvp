@@ -30,6 +30,7 @@ from app.models.risk_rule_hit import RiskRuleHit
 from app.models.risk_status import RiskStatusRow
 from app.models.weekly_phq4 import WeeklyPhq4Assessment
 from app.models.weekly_pss4 import WeeklyPss4Assessment
+from app.modules.cases import service as cases_service
 from app.modules.risk import engine
 from app.services.audit_logger import log_event
 
@@ -281,6 +282,9 @@ def recompute(
             "hard_flag": result.hard_flag,
         },
     )
+
+    # Sprint 5: auto-open or attach to an existing open case (Spec §13).
+    cases_service.maybe_open_case(db, user_id=user_id, risk_event=event)
 
     return event
 
