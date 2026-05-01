@@ -102,6 +102,38 @@ export default function SoldierHomePage() {
             </div>
           </li>
         )}
+
+        {onboarding.baseline_completed && summary.weekly_due && (
+          <li className="kpi-card">
+            <strong>Щотижневе перепроходження</strong>
+            <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
+              PHQ-4 + PSS-4. Займе кілька хвилин.
+            </div>
+            <Link
+              className="btn"
+              style={{ marginTop: 8, display: "inline-block" }}
+              href="/soldier/weekly"
+            >
+              Пройти
+            </Link>
+          </li>
+        )}
+
+        {onboarding.baseline_completed && summary.cognitive_due && (
+          <li className="kpi-card">
+            <strong>Когнітивні задачі</strong>
+            <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
+              Тест реакції та Go / No-Go.
+            </div>
+            <Link
+              className="btn"
+              style={{ marginTop: 8, display: "inline-block" }}
+              href="/soldier/cognitive"
+            >
+              До задач
+            </Link>
+          </li>
+        )}
       </ul>
 
       <p style={{ marginTop: 24, fontSize: "0.875rem" }}>

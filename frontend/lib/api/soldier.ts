@@ -94,4 +94,35 @@ export const soldierApi = {
 
   completionSummary: () =>
     apiCall<CompletionSummary>("/api/v1/soldier/completion-summary"),
+
+  submitWeeklyPhq4: (answers: number[]) =>
+    apiCall<{ weekly_phq4_id: string; total_score: number }>(
+      "/api/v1/soldier/weekly/phq4",
+      { method: "POST", body: { answers } },
+    ),
+
+  submitWeeklyPss4: (answers: number[]) =>
+    apiCall<{ weekly_pss4_id: string; total_score: number }>(
+      "/api/v1/soldier/weekly/pss4",
+      { method: "POST", body: { answers } },
+    ),
+
+  submitCognitiveReaction: (medianMs: number, validTrials: number) =>
+    apiCall<{ reaction_test_id: string }>(
+      "/api/v1/soldier/cognitive/reaction-test",
+      {
+        method: "POST",
+        body: { median_reaction_time_ms: medianMs, valid_trials: validTrials },
+      },
+    ),
+
+  submitCognitiveGoNoGo: (commission: number, omission: number, validTrials: number) =>
+    apiCall<{ go_no_go_id: string }>("/api/v1/soldier/cognitive/go-no-go", {
+      method: "POST",
+      body: {
+        commission_errors: commission,
+        omission_errors: omission,
+        valid_trials: validTrials,
+      },
+    }),
 };

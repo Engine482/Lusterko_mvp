@@ -1,16 +1,21 @@
-"""Daily check-in submissions (Backlog TASK-2108).
+"""Daily check-in submissions + due-state calculator (Backlog TASK-2108).
 
 P0 contract:
 - baseline must be completed (BASELINE_NOT_COMPLETE).
 - exactly one row per (user_id, checkin_date) (DAILY_ALREADY_SUBMITTED).
-- AI parsing + Risk Engine wiring lands in Sprints 3-4; for now we return
-  insufficient_data + skipped per API Contracts §2 valid values.
+- Risk Engine wiring lands in Sprint 4; for now we return insufficient_data
+  per API Contracts §2 valid values.
+
+Due-state v1 (Sprint 3):
+- weekly_due: latest weekly PHQ-4 OR PSS-4 is older than 7 days.
+- cognitive_due: latest reaction_tests/go_no_go_tests context='cognitive' is
+  older than 3 days (≈ twice/week per PRD §8.7).
 """
 
 from __future__ import annotations
 
 import uuid
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Literal
 
 from sqlalchemy import select
@@ -18,7 +23,14 @@ from sqlalchemy.orm import Session
 
 from app.models.baseline_profile import BaselineProfile
 from app.models.daily_checkin import DailyCheckin
+from app.models.go_no_go_test import GoNoGoTest
+from app.models.reaction_test import ReactionTest
+from app.models.weekly_phq4 import WeeklyPhq4Assessment
+from app.models.weekly_pss4 import WeeklyPss4Assessment
 from app.services.audit_logger import log_event
+
+WEEKLY_INTERVAL = timedelta(days=7)
+COGNITIVE_INTERVAL = timedelta(days=3)
 
 
 class DailyError(Exception):
@@ -92,6 +104,40 @@ def submit_daily(
     return row
 
 
+def _last_assessment_date(
+    db: Session,
+    model: type[WeeklyPhq4Assessment] | type[WeeklyPss4Assessment],
+    user_id: uuid.UUID,
+) -> date | None:
+    stmt = (
+        select(model.assessment_date)
+        .where(model.user_id == user_id)
+        .order_by(model.assessment_date.desc())
+        .limit(1)
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def _last_cognitive_date(
+    db: Session,
+    model: type[ReactionTest] | type[GoNoGoTest],
+    user_id: uuid.UUID,
+) -> date | None:
+    stmt = (
+        select(model.test_date)
+        .where(model.user_id == user_id, model.context == "cognitive")
+        .order_by(model.test_date.desc())
+        .limit(1)
+    )
+    return db.execute(stmt).scalar_one_or_none()
+
+
+def _is_due(last_seen: date | None, interval: timedelta, *, today: date) -> bool:
+    if last_seen is None:
+        return True
+    return today - last_seen >= interval
+
+
 def completion_summary(
     db: Session, *, user_id: uuid.UUID, day: date
 ) -> dict[str, object]:
@@ -99,13 +145,31 @@ def completion_summary(
         select(BaselineProfile).where(BaselineProfile.user_id == user_id)
     ).scalar_one_or_none()
     baseline_done = profile is not None and profile.baseline_completed
-    daily_done = (
-        _existing_today(db, user_id=user_id, day=day) is not None if baseline_done else False
+    if not baseline_done:
+        return {
+            "daily_due": False,
+            "weekly_due": False,
+            "cognitive_due": False,
+            "last_risk_status": None,
+        }
+
+    daily_done = _existing_today(db, user_id=user_id, day=day) is not None
+
+    last_phq4 = _last_assessment_date(db, WeeklyPhq4Assessment, user_id)
+    last_pss4 = _last_assessment_date(db, WeeklyPss4Assessment, user_id)
+    weekly_due = _is_due(last_phq4, WEEKLY_INTERVAL, today=day) or _is_due(
+        last_pss4, WEEKLY_INTERVAL, today=day
     )
+
+    last_reaction = _last_cognitive_date(db, ReactionTest, user_id)
+    last_go_no_go = _last_cognitive_date(db, GoNoGoTest, user_id)
+    cognitive_due = _is_due(last_reaction, COGNITIVE_INTERVAL, today=day) or _is_due(
+        last_go_no_go, COGNITIVE_INTERVAL, today=day
+    )
+
     return {
-        "daily_due": baseline_done and not daily_done,
-        # Weekly + cognitive due-state lands in Sprint 3; report False for now.
-        "weekly_due": False,
-        "cognitive_due": False,
+        "daily_due": not daily_done,
+        "weekly_due": weekly_due,
+        "cognitive_due": cognitive_due,
         "last_risk_status": None,  # Risk Engine — Sprint 4
     }

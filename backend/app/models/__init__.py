@@ -8,22 +8,32 @@ from app.models.audit_log import AuditLog
 from app.models.auth_invite import AuthInvite
 from app.models.baseline_event import BaselineEvent
 from app.models.baseline_profile import BaselineProfile
+from app.models.comment_ai_analysis import CommentAiAnalysis
 from app.models.daily_checkin import DailyCheckin
+from app.models.go_no_go_test import GoNoGoTest
+from app.models.reaction_test import ReactionTest
 from app.models.unit import Unit
 from app.models.user import User
 from app.models.user_identity import UserIdentity
 from app.models.user_role import UserRole
 from app.models.user_session import UserSession
+from app.models.weekly_phq4 import WeeklyPhq4Assessment
+from app.models.weekly_pss4 import WeeklyPss4Assessment
 
 __all__ = [
     "AuditLog",
     "AuthInvite",
     "BaselineEvent",
     "BaselineProfile",
+    "CommentAiAnalysis",
     "DailyCheckin",
+    "GoNoGoTest",
+    "ReactionTest",
     "Unit",
     "User",
     "UserIdentity",
     "UserRole",
     "UserSession",
+    "WeeklyPhq4Assessment",
+    "WeeklyPss4Assessment",
 ]

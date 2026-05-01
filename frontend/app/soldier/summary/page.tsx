@@ -37,10 +37,10 @@ export default function SoldierSummaryPage() {
           Daily: {summary.daily_due ? "Потрібно пройти" : "Виконано"}
         </li>
         <li className="kpi-card">
-          Weekly: {summary.weekly_due ? "Потрібно пройти" : "Доступно після Sprint 3"}
+          Weekly: {summary.weekly_due ? "Потрібно пройти" : "Виконано"}
         </li>
         <li className="kpi-card">
-          Cognitive: {summary.cognitive_due ? "Потрібно пройти" : "Доступно після Sprint 3"}
+          Cognitive: {summary.cognitive_due ? "Потрібно пройти" : "Виконано"}
         </li>
         <li className="kpi-card">
           Поточний risk: {summary.last_risk_status ?? "ще не обчислюється"}
