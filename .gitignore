@@ -1,0 +1,73 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Env
+.env
+.env.*
+!.env.example
+!.env*.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Alembic / local db artifacts
+*.sqlite3
+*.db
+
+# Node
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.npm/
+.pnpm-store/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Runtime
+pids/
+*.pid
+*.pid.lock
+
+# Build artifacts
+build/
+.tmp/
+tmp/
+
+# Testing artifacts
+playwright-report/
+test-results/
+
+# Secrets / local dumps
+*.pem
+*.key
+*.crt
+*.p12
+*.dump
+*.sql
+backups/
+
+# macOS/Linux misc
+.cache/
