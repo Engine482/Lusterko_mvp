@@ -21,6 +21,12 @@
 9. `docs/03_planning/Lusterko_Sprint_Plan_P0_v1.md`
 10. `docs/03_planning/Lusterko_Development_Backlog_v1.md`
 
+Якщо зміна стосується середовища або agenting, додатково звіряйся з:
+
+- `docs/04_environment/`
+- `docs/05_repo_and_agenting/`
+- `.mcp.json`
+
 ## Scope discipline
 
 P0 MVP включає тільки:
@@ -63,12 +69,17 @@ P0 MVP включає тільки:
 3. реалізуй мінімальний вертикальний зріз
 4. перевір API / DB / RBAC / tests
 
+Не генеруй продуктовий код, якщо задача явно про bootstrap, repo hygiene або середовище. Для P0 тримайся документації та не додавай нові сервіси без окремого рішення.
+
 ## Безпека
 
 - будь-яке role/scope обмеження має бути на backend
 - frontend guards не вважаються захистом
 - admin не дорівнює omniscient superuser
 - active role визначає доступ, а не сумарний набір ролей
+- секрети мають жити тільки в локальних `.env*` або runtime environment
+- не коміть токени, production passwords, dumps або приватні ключі
+- Claude Code MCP integrations мають бути project-scoped через `.mcp.json` або `claude mcp`; не додавай filesystem/git MCP чи випадкові community integrations без явної потреби
 
 ## Що робити першим
 
