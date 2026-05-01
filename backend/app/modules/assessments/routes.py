@@ -1,10 +1,11 @@
 """Soldier API per `Lusterko_API_Contracts_v1.md` §5.
 
 All endpoints under `/api/v1/soldier` require `active_role == 'soldier'`
-(`Lusterko_RBAC_Matrix_v1.md` §5.2). Risk Engine integration lands in Sprint 4
-(daily response keeps `risk_status: insufficient_data` until then). AI parsing
-is wired in Sprint 3: when the comment is non-empty the parser runs and the
-result is persisted via `comment_ai_analyses`.
+(`Lusterko_RBAC_Matrix_v1.md` §5.2). Sprint 3 wires AI text parsing into the
+daily flow; Sprint 4 wires the rule-based Risk Engine: every write that can
+move the needle (daily / weekly / cognitive / baseline completion) triggers
+a recompute via `risk.service.recompute`, which appends a `risk_event` and
+upserts the per-user `risk_status` row.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from app.modules.auth.dependencies import (
     get_db,
     require_role,
 )
+from app.modules.risk import service as risk_service
 from app.models.baseline_profile import BaselineProfile
 from app.models.comment_ai_analysis import CommentAiAnalysis
 from app.schemas.soldier import (
@@ -193,6 +195,12 @@ def baseline_complete(
     except baseline_service.BaselineError as err:
         db.rollback()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
+    risk_service.recompute(
+        db,
+        user_id=ctx.user.id,
+        source_event_type="baseline_completion",
+        source_event_id=profile.id,
+    )
     db.commit()
     assert profile.completed_at is not None
     return success_response(
@@ -257,15 +265,22 @@ def daily_submit(
             raw_model_name=analysis.raw_model_name,
         )
     )
+    db.flush()
+
+    # Sprint 4: recompute risk after the daily + its AI analysis are persisted.
+    event = risk_service.recompute(
+        db,
+        user_id=ctx.user.id,
+        source_event_type="daily_checkin",
+        source_event_id=row.id,
+    )
     db.commit()
 
-    # Risk Engine — Sprint 4. Until then we return insufficient_data even if
-    # AI flagged a high-risk comment (no auto-decisioning without Risk Engine).
     return success_response(
         DailySubmissionResponse(
             daily_checkin_id=row.id,
-            risk_status="insufficient_data",
-            explanation_text=None,
+            risk_status=event.new_status,  # type: ignore[arg-type]
+            explanation_text=event.explanation_text,
             ai_parse_status=analysis.parse_status,
         ).model_dump(mode="json")
     )
@@ -285,6 +300,12 @@ def weekly_phq4(
     except weekly_service.WeeklyError as err:
         db.rollback()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
+    risk_service.recompute(
+        db,
+        user_id=ctx.user.id,
+        source_event_type="weekly_phq4",
+        source_event_id=row.id,
+    )
     db.commit()
     return success_response(
         {"weekly_phq4_id": str(row.id), "total_score": row.total_score}
@@ -302,6 +323,12 @@ def weekly_pss4(
     except weekly_service.WeeklyError as err:
         db.rollback()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
+    risk_service.recompute(
+        db,
+        user_id=ctx.user.id,
+        source_event_type="weekly_pss4",
+        source_event_id=row.id,
+    )
     db.commit()
     return success_response(
         {"weekly_pss4_id": str(row.id), "total_score": row.total_score}
@@ -323,6 +350,12 @@ def cognitive_reaction(
         median_reaction_time_ms=payload.median_reaction_time_ms,
         valid_trials=payload.valid_trials,
     )
+    risk_service.recompute(
+        db,
+        user_id=ctx.user.id,
+        source_event_type="reaction_test",
+        source_event_id=row.id,
+    )
     db.commit()
     return success_response({"reaction_test_id": str(row.id)})
 
@@ -339,6 +372,12 @@ def cognitive_go_no_go(
         commission_errors=payload.commission_errors,
         omission_errors=payload.omission_errors,
         valid_trials=payload.valid_trials,
+    )
+    risk_service.recompute(
+        db,
+        user_id=ctx.user.id,
+        source_event_type="go_no_go",
+        source_event_id=row.id,
     )
     db.commit()
     return success_response({"go_no_go_id": str(row.id)})

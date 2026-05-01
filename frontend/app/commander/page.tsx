@@ -1,10 +1,130 @@
-// Commander Dashboard — Wireframes P0 §6.1.
-// Filled in Sprint 4 (Backlog TASK-4501).
+"use client";
+
+import Link from "next/link";
+import { useEffect, useState } from "react";
+
+import {
+  commanderApi,
+  type CommanderCaseRow,
+  type CommanderSummary,
+} from "@/lib/api/commander";
+import { describeError } from "@/lib/api/utils";
+import type { RiskStatus } from "@/types/enums";
+
+const STATUS_LABEL: Record<RiskStatus, string> = {
+  green: "Green",
+  yellow: "Yellow",
+  red: "Red",
+  insufficient_data: "Недостатньо даних",
+};
+
+const STATUS_BG: Record<RiskStatus, string> = {
+  red: "#b00020",
+  yellow: "#b07a00",
+  green: "#1a7a3a",
+  insufficient_data: "rgba(0,0,0,0.4)",
+};
+
+type FilterValue = RiskStatus | "all";
+
+const FILTERS: FilterValue[] = ["all", "red", "yellow", "green", "insufficient_data"];
+
+// Wireframes P0 §6.1 — Commander Dashboard.
 export default function CommanderDashboardPage() {
+  const [summary, setSummary] = useState<CommanderSummary | null>(null);
+  const [cases, setCases] = useState<CommanderCaseRow[] | null>(null);
+  const [filter, setFilter] = useState<FilterValue>("all");
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([
+      commanderApi.dashboardSummary(),
+      commanderApi.dashboardCases(filter === "all" ? undefined : { status: filter }),
+    ])
+      .then(([s, c]) => {
+        if (cancelled) return;
+        setSummary(s);
+        setCases(c.cases);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(describeError(err));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [filter]);
+
+  if (error) return <div className="alert alert--error">{error}</div>;
+  if (!summary) return <p>Завантаження…</p>;
+
   return (
     <section>
       <h1>Commander Dashboard</h1>
-      <p>Заглушка скелета. Імплементація — Sprint 4.</p>
+      {summary.unit_id === null && (
+        <div className="alert alert--info">
+          Вашому акаунту не призначено підрозділ. Зверніться до адміна.
+        </div>
+      )}
+
+      <ul style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: 0, listStyle: "none" }}>
+        {(Object.keys(STATUS_LABEL) as RiskStatus[]).map((s) => (
+          <li
+            key={s}
+            className="kpi-card"
+            style={{ background: STATUS_BG[s], color: "white" }}
+          >
+            <div style={{ fontSize: "0.75rem", opacity: 0.8 }}>
+              {STATUS_LABEL[s]}
+            </div>
+            <div style={{ fontSize: "1.5rem", fontWeight: 600 }}>
+              {summary.counts[s]}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      <div style={{ marginTop: 24, display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {FILTERS.map((f) => (
+          <button
+            key={f}
+            type="button"
+            className="btn"
+            onClick={() => setFilter(f)}
+            style={{
+              opacity: filter === f ? 1 : 0.5,
+            }}
+          >
+            {f === "all" ? "Всі" : STATUS_LABEL[f]}
+          </button>
+        ))}
+      </div>
+
+      <h2 style={{ marginTop: 24 }}>Кейси</h2>
+      {cases === null && <p>Завантаження…</p>}
+      {cases && cases.length === 0 && <p>Немає кейсів.</p>}
+      {cases && cases.length > 0 && (
+        <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
+          {cases.map((c) => (
+            <li key={c.user_id} className="kpi-card">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                <strong>{c.full_name}</strong>
+                <span style={{ color: STATUS_BG[c.current_risk_status] }}>
+                  {STATUS_LABEL[c.current_risk_status]}
+                </span>
+              </div>
+              {c.explanation_text && (
+                <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
+                  {c.explanation_text}
+                </div>
+              )}
+              <div style={{ marginTop: 8, fontSize: "0.8125rem" }}>
+                <Link href={`/commander/cases/${c.user_id}`}>Деталі →</Link>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

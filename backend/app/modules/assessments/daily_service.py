@@ -3,8 +3,8 @@
 P0 contract:
 - baseline must be completed (BASELINE_NOT_COMPLETE).
 - exactly one row per (user_id, checkin_date) (DAILY_ALREADY_SUBMITTED).
-- Risk Engine wiring lands in Sprint 4; for now we return insufficient_data
-  per API Contracts §2 valid values.
+- Risk Engine (Sprint 4) provides the real last_risk_status read from
+  `risk_statuses`; before any recompute the user is in `insufficient_data`.
 
 Due-state v1 (Sprint 3):
 - weekly_due: latest weekly PHQ-4 OR PSS-4 is older than 7 days.
@@ -25,6 +25,7 @@ from app.models.baseline_profile import BaselineProfile
 from app.models.daily_checkin import DailyCheckin
 from app.models.go_no_go_test import GoNoGoTest
 from app.models.reaction_test import ReactionTest
+from app.models.risk_status import RiskStatusRow
 from app.models.weekly_phq4 import WeeklyPhq4Assessment
 from app.models.weekly_pss4 import WeeklyPss4Assessment
 from app.services.audit_logger import log_event
@@ -52,11 +53,22 @@ def _existing_today(db: Session, *, user_id: uuid.UUID, day: date) -> DailyCheck
     ).scalar_one_or_none()
 
 
+def _current_status(
+    db: Session, user_id: uuid.UUID
+) -> Literal["green", "yellow", "red", "insufficient_data"] | None:
+    status = db.execute(
+        select(RiskStatusRow.current_risk_status).where(
+            RiskStatusRow.user_id == user_id
+        )
+    ).scalar_one_or_none()
+    return status  # type: ignore[return-value]
+
+
 def get_today_state(
     db: Session, *, user_id: uuid.UUID, day: date
 ) -> tuple[bool, Literal["green", "yellow", "red", "insufficient_data"] | None]:
     row = _existing_today(db, user_id=user_id, day=day)
-    return (row is not None, None)  # last_risk_status wired in Sprint 4
+    return (row is not None, _current_status(db, user_id))
 
 
 def submit_daily(
@@ -171,5 +183,5 @@ def completion_summary(
         "daily_due": not daily_done,
         "weekly_due": weekly_due,
         "cognitive_due": cognitive_due,
-        "last_risk_status": None,  # Risk Engine — Sprint 4
+        "last_risk_status": _current_status(db, user_id),
     }

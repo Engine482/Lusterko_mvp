@@ -12,6 +12,9 @@ from app.models.comment_ai_analysis import CommentAiAnalysis
 from app.models.daily_checkin import DailyCheckin
 from app.models.go_no_go_test import GoNoGoTest
 from app.models.reaction_test import ReactionTest
+from app.models.risk_event import RiskEvent
+from app.models.risk_rule_hit import RiskRuleHit
+from app.models.risk_status import RiskStatusRow
 from app.models.unit import Unit
 from app.models.user import User
 from app.models.user_identity import UserIdentity
@@ -29,6 +32,9 @@ __all__ = [
     "DailyCheckin",
     "GoNoGoTest",
     "ReactionTest",
+    "RiskEvent",
+    "RiskRuleHit",
+    "RiskStatusRow",
     "Unit",
     "User",
     "UserIdentity",

@@ -102,7 +102,9 @@ def test_t_soldier_005_baseline_complete_unlocks_daily(client: TestClient) -> No
     )
     assert res.status_code == 200, res.text
     body = res.json()["data"]
-    assert body["risk_status"] == "insufficient_data"
+    # Sprint 4: Risk Engine returns a real status. With no daily signal and
+    # baseline completed the user is green.
+    assert body["risk_status"] == "green"
     assert body["ai_parse_status"] == "skipped"
 
 

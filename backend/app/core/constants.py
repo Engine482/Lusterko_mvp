@@ -93,6 +93,47 @@ AI_MARKERS: Final[tuple[AIMarker, ...]] = (
     "acute_distress",
 )
 
+# --- Risk hard flags ----------------------------------------------------------
+HardFlag = Literal[
+    "severe_functional_cluster",
+    "severe_cognitive_drop",
+    "acute_distress",
+    "repeated_high_text_risk",
+]
+HARD_FLAGS: Final[tuple[HardFlag, ...]] = (
+    "severe_functional_cluster",
+    "severe_cognitive_drop",
+    "acute_distress",
+    "repeated_high_text_risk",
+)
+
+# --- Risk rule domains --------------------------------------------------------
+RiskDomain = Literal["functional", "emotional", "cognitive", "text"]
+RISK_DOMAINS: Final[tuple[RiskDomain, ...]] = (
+    "functional",
+    "emotional",
+    "cognitive",
+    "text",
+)
+
+# --- Risk source event types --------------------------------------------------
+RiskSourceEvent = Literal[
+    "daily_checkin",
+    "weekly_phq4",
+    "weekly_pss4",
+    "reaction_test",
+    "go_no_go",
+    "baseline_completion",
+]
+RISK_SOURCE_EVENTS: Final[tuple[RiskSourceEvent, ...]] = (
+    "daily_checkin",
+    "weekly_phq4",
+    "weekly_pss4",
+    "reaction_test",
+    "go_no_go",
+    "baseline_completion",
+)
+
 # --- Audit event types --------------------------------------------------------
 AuditEventType = Literal[
     "login_success",
@@ -114,4 +155,7 @@ AuditEventType = Literal[
     "case_opened",
     "case_status_changed",
     "case_note_added",
+    "risk_recomputed",
+    "commander_case_viewed",
+    "cross_unit_access_denied",
 ]
