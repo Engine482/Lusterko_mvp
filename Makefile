@@ -1,4 +1,4 @@
-.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-test-up db-migrate db-revision seed mcp-list
+.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-test-up db-migrate db-revision seed seed-demo mcp-list
 
 setup: setup-backend setup-frontend
 
@@ -43,6 +43,9 @@ db-revision:
 
 seed:
 	cd backend && uv run python -m scripts.seed
+
+seed-demo:
+	cd backend && uv run python -m scripts.seed_demo $(if $(reset),--reset,)
 
 mcp-list:
 	claude mcp list
