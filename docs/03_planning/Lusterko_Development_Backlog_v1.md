@@ -399,3 +399,54 @@
 - TASK-6601 — CI крок: `docker compose -f infra/docker-compose.prod.yml build` (проста перевірка що Dockerfile-и не ламаються)
 - TASK-6602 — End-to-end smoke на pilot БД: invite → login → daily → weekly → cognitive → commander dashboard → medic case → close
 - TASK-6603 — README розділ "Production deployment" з покроковою інструкцією (DNS, certbot, env, deploy.sh)
+
+## Sprint 7 — Auth Pivot (Google OAuth → email+password)
+
+> **Decision:** повний rationale у `docs/06_decisions/2026-05-02-auth-email-password.md`.
+> Параметри: argon2id (12-char min), rate-limit `/login` 5/15хв на пару (IP,email)
+> + soft-lock 5хв, токени invite 7д / reset 1г, session 30д rolling. Без 2FA на P0.
+> SSO/SAML відкладено до V1.
+
+### EPIC-70 Backend auth (Google → email+password)
+- TASK-7001 — Alembic міграція: `users.password_hash`, таблиця `password_reset_tokens (id, user_id, token_hash, expires_at, consumed_at)`
+- TASK-7002 — `app/core/security/passwords.py`: argon2id hash/verify, мінімум 12 символів, опціонально top-N block-list
+- TASK-7003 — `POST /api/v1/auth/login` — email+password → session cookie
+- TASK-7004 — `POST /api/v1/auth/logout` — clear session
+- TASK-7005 — `POST /api/v1/auth/invite/accept` — invite_token + full_name + password → user + session
+- TASK-7006 — `POST /api/v1/auth/password/forgot` — anti-enumeration; reset email
+- TASK-7007 — `POST /api/v1/auth/password/reset` — reset_token + password → update + session
+- TASK-7008 — Видалити `app/modules/auth/google.py`, `user_identities`, `GOOGLE_CLIENT_*` env, dev-stub flow
+- TASK-7009 — Видалити Google-related тести; конфіг очистити
+
+### EPIC-71 Mailer extension
+- TASK-7101 — `send_password_reset(...)` у `app/modules/notifications/mailer.py`
+- TASK-7102 — UA шаблон листа "Скидання паролю в Lusterko" (plaintext+HTML)
+- TASK-7103 — Аудит-події `password_reset_requested`, `password_reset_completed`
+
+### EPIC-72 Brute-force захист
+- TASK-7201 — Rate-limit (5/15хв per IP+email) на `/login`, `/password/forgot`, `/password/reset`, `/invite/accept`
+- TASK-7202 — Soft-lockout: 5 fail-у-рядок → 5хв lock; експоненційний backoff кожного наступного циклу
+- TASK-7203 — Аудит-події `login_failed`, `account_locked`
+
+### EPIC-73 Frontend
+- TASK-7301 — `/login` (email + password + "Забули пароль?")
+- TASK-7302 — `/invite?token=XXX` (set initial password)
+- TASK-7303 — `/forgot-password` (email form, генерична відповідь)
+- TASK-7304 — `/reset-password?token=XXX` (новий пароль + confirm)
+- TASK-7305 — Видалити Google-OAuth екрани і callback handler
+
+### EPIC-74 Bootstrap & docs
+- TASK-7401 — `scripts/seed.py`: підтримка `BOOTSTRAP_ADMIN_PASSWORD` (argon2id, idempotent)
+- TASK-7402 — `docs/01_product/PRD.md` — замінити всі згадки Google OAuth на email+password; додати посилання на ADR
+- TASK-7403 — `docs/02_pre_build/Lusterko_API_Contracts_v1.md` — нові auth endpoints, видалити Google-related
+- TASK-7404 — `docs/02_pre_build/Lusterko_DB_Schema_v1.md` — `password_hash`, `password_reset_tokens`; видалити `user_identities`
+- TASK-7405 — `docs/02_pre_build/Lusterko_Test_Scenarios_P0_v1.md` — auth scenarios оновити
+- TASK-7406 — `docs/02_pre_build/Lusterko_Wireframes_P0_v1.md` — login/invite/forgot/reset екрани
+- TASK-7407 — README + AGENTS.md, де згадка Google OAuth — оновити
+
+### EPIC-75 Tests
+- TASK-7501 — argon2id hash/verify; length policy enforcement
+- TASK-7502 — invite/accept: happy + used-token + expired-token
+- TASK-7503 — login: success / wrong-password / locked / rate-limited
+- TASK-7504 — forgot/reset full flow + reuse + expired
+- TASK-7505 — RBAC end-to-end smoke (інваріант: ролі не змінились після auth swap)
