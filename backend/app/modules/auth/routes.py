@@ -1,4 +1,4 @@
-"""Auth API per `Lusterko_API_Contracts_v1.md` §3.
+"""Auth API per `Lusterko_API_Contracts_v1.md` §3 (Sprint 7 email+password).
 
 Implementation notes:
 - `db` and `current_session_context` both depend on `get_db`; FastAPI caches
@@ -7,17 +7,23 @@ Implementation notes:
   and we can mutate it directly.
 - All endpoints commit at the end. Errors short-circuit with a commit too so
   audit log entries always make it to disk.
+- `/password/forgot` is anti-enumeration: it always returns the same
+  envelope, regardless of whether the email matched a user. The mailer is
+  invoked only when there is a real active user.
 """
 
 from __future__ import annotations
 
 import ipaddress
 
-from fastapi import APIRouter, Depends, Query, Request, Response
+from fastapi import APIRouter, Depends, Request, Response
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.api_response import error_response, success_response
+from app.core.config import get_settings
 from app.core.cookies import clear_session_cookie, set_session_cookie
+from app.modules.auth import rate_limit as rl
 from app.modules.auth import service as auth_service
 from app.modules.auth.dependencies import (
     SessionContext,
@@ -25,17 +31,19 @@ from app.modules.auth.dependencies import (
     get_db,
     require_authenticated_session,
 )
-from app.modules.auth.google import (
-    build_authorize_url,
-    exchange_code_for_profile,
-    is_stub_mode,
-    stub_profile_for,
-)
+from app.modules.notifications import mailer as mailer_mod
 from app.models.user import User
 from app.schemas.auth import (
     AuthMeResponse,
-    GoogleStartResponse,
+    InviteAcceptRequest,
+    InviteAcceptResponse,
+    LoginRequest,
+    LoginResponse,
     LogoutResponse,
+    PasswordForgotRequest,
+    PasswordForgotResponse,
+    PasswordResetRequest,
+    PasswordResetResponse,
     RefreshResponse,
     SelectRoleRequest,
     SelectRoleResponse,
@@ -57,119 +65,205 @@ def _client_ip(request: Request) -> str | None:
     return raw
 
 
-def _redirect_uri(request: Request) -> str:
-    base = str(request.base_url).rstrip("/")
-    return f"{base}/api/v1/auth/google/callback"
+# --- Login / invite-accept --------------------------------------------------
 
 
-@router.get("/google/start")
-def google_start(
+@router.post("/login")
+def login(
+    payload: LoginRequest,
     request: Request,
-    invite_token: str = Query(..., min_length=10),
     db: Session = Depends(get_db),
 ) -> Response:
+    ip = _client_ip(request)
+    key = rl.login_key(ip=ip, email=payload.email)
     try:
-        auth_service.validate_invite_token(db, token=invite_token)
-    except auth_service.InviteError as err:
+        rl.check_lockout(db, key=key)
+        user = auth_service.authenticate(
+            db,
+            email=payload.email,
+            password=payload.password,
+        )
+    except auth_service.AuthError as err:
+        if err.code != "ACCOUNT_LOCKED":
+            rl.record_failure(db, key=key, ip_address=ip)
         log_event(
             db,
             event_type="login_failed",
-            metadata={"reason": err.code},
-            ip_address=_client_ip(request),
+            metadata={"email": payload.email, "reason": err.code},
+            ip_address=ip,
         )
         db.commit()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
 
-    url = build_authorize_url(state=invite_token, redirect_uri=_redirect_uri(request))
-    return success_response(GoogleStartResponse(redirect_url=url).model_dump())
-
-
-@router.get("/google/callback")
-def google_callback(
-    request: Request,
-    state: str = Query(...),
-    code: str | None = Query(default=None),
-    dev_stub: int | None = Query(default=None),
-    db: Session = Depends(get_db),
-) -> Response:
-    try:
-        invite = auth_service.validate_invite_token(db, token=state)
-    except auth_service.InviteError as err:
-        log_event(
-            db,
-            event_type="login_failed",
-            metadata={"reason": err.code},
-            ip_address=_client_ip(request),
-        )
-        db.commit()
-        return error_response(err.code, err.message)  # type: ignore[arg-type]
-
-    invited_user = db.get(User, invite.user_id)
-    if invited_user is None or invited_user.status != "active":
-        log_event(
-            db,
-            event_type="login_failed",
-            target_user_id=invite.user_id,
-            metadata={"reason": "user_inactive"},
-            ip_address=_client_ip(request),
-        )
-        db.commit()
-        return error_response("UNAUTHORIZED", "User is not active.")
-
-    if dev_stub == 1 or is_stub_mode():
-        profile = stub_profile_for(invited_user.email)
-    else:
-        if not code:
-            return error_response("VALIDATION_ERROR", "Missing OAuth code.")
-        try:
-            profile = exchange_code_for_profile(
-                code=code, redirect_uri=_redirect_uri(request)
-            )
-        except Exception as exc:  # pragma: no cover — exercised in prod
-            log_event(
-                db,
-                event_type="login_failed",
-                target_user_id=invited_user.id,
-                metadata={"reason": "google_exchange_failed", "error": str(exc)[:200]},
-                ip_address=_client_ip(request),
-            )
-            db.commit()
-            return error_response("UNAUTHORIZED", "Google sign-in failed.")
-
-    if profile.email.lower() != invited_user.email.lower():
-        log_event(
-            db,
-            event_type="login_failed",
-            target_user_id=invited_user.id,
-            metadata={"reason": "email_mismatch"},
-            ip_address=_client_ip(request),
-        )
-        db.commit()
-        return error_response("UNAUTHORIZED", "Email does not match invite.")
-
-    auth_service.get_or_create_google_identity(
-        db,
-        user=invited_user,
-        provider_subject=profile.subject,
-        email_at_provider=profile.email,
-    )
-    auth_service.consume_invite(db, invite)
-
+    rl.record_success(db, key=key)
     try:
         issued = auth_service.create_session(
             db,
-            user=invited_user,
-            ip_address=_client_ip(request),
+            user=user,
+            ip_address=ip,
             user_agent=request.headers.get("user-agent"),
         )
-    except auth_service.InviteError as err:
+    except auth_service.AuthError as err:
         db.commit()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
 
     db.commit()
-    response = success_response({"login": "ok"})
+    response = success_response(LoginResponse(logged_in=True).model_dump())
     set_session_cookie(response, issued.token)
     return response
+
+
+@router.post("/invite/accept")
+def invite_accept(
+    payload: InviteAcceptRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    ip = _client_ip(request)
+    key = rl.invite_accept_key(ip=ip)
+    try:
+        rl.check_lockout(db, key=key)
+        user = auth_service.accept_invite(
+            db,
+            token=payload.token,
+            full_name=payload.full_name,
+            password=payload.password,
+        )
+    except auth_service.AuthError as err:
+        # WEAK_PASSWORD is a UX hint, not a brute-force signal — don't count it.
+        if err.code not in ("ACCOUNT_LOCKED", "WEAK_PASSWORD"):
+            rl.record_failure(db, key=key, ip_address=ip)
+        log_event(
+            db,
+            event_type="login_failed",
+            metadata={"reason": err.code},
+            ip_address=ip,
+        )
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+
+    rl.record_success(db, key=key)
+    try:
+        issued = auth_service.create_session(
+            db,
+            user=user,
+            ip_address=ip,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except auth_service.AuthError as err:
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+
+    db.commit()
+    response = success_response(InviteAcceptResponse(accepted=True).model_dump())
+    set_session_cookie(response, issued.token)
+    return response
+
+
+# --- Password reset ---------------------------------------------------------
+
+
+@router.post("/password/forgot")
+def password_forgot(
+    payload: PasswordForgotRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Anti-enumeration: same response shape whether the email matched or
+    not. We do all real work inside the conditional so a missing email
+    costs ~zero and timing differences stay below the noise floor.
+
+    Rate-limited per (IP, email) to prevent reset-spam: 5/15min then a
+    backoff lock. The lockout response intentionally still returns the
+    generic envelope shape so it does not leak account existence."""
+
+    ip = _client_ip(request)
+    key = rl.password_forgot_key(ip=ip, email=payload.email)
+    try:
+        rl.check_lockout(db, key=key)
+    except auth_service.AuthError:
+        # Swallow lockout into the generic success envelope — anti-
+        # enumeration trumps "tell user to slow down" here.
+        db.commit()
+        return success_response(PasswordForgotResponse(queued=True).model_dump())
+
+    # Every call counts toward the rate-limit (success or not), so this
+    # endpoint can't be used as a free-fire reset spammer.
+    rl.record_failure(db, key=key, ip_address=ip)
+
+    user = db.execute(
+        select(User).where(User.email == payload.email.lower().strip())
+    ).scalar_one_or_none()
+    if user is not None and user.status == "active":
+        issued = auth_service.issue_password_reset(db, user=user)
+        reset_url = mailer_mod.build_password_reset_url(
+            get_settings().app_public_base_url, issued.token
+        )
+        result = mailer_mod.get_mailer().send_password_reset(
+            mailer_mod.PasswordResetEmail(
+                to_email=user.email,
+                to_full_name=user.full_name,
+                reset_url=reset_url,
+                expires_at_iso=issued.reset.expires_at.isoformat(),
+            )
+        )
+        log_event(
+            db,
+            event_type=(
+                "password_reset_email_sent" if result.ok
+                else "password_reset_email_failed"
+            ),
+            target_user_id=user.id,
+            entity_type="password_reset_tokens",
+            entity_id=issued.reset.id,
+            metadata={"error": result.error} if result.error else None,
+        )
+
+    db.commit()
+    return success_response(PasswordForgotResponse(queued=True).model_dump())
+
+
+@router.post("/password/reset")
+def password_reset(
+    payload: PasswordResetRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    ip = _client_ip(request)
+    key = rl.password_reset_key(ip=ip)
+    try:
+        rl.check_lockout(db, key=key)
+        reset_row = auth_service.validate_password_reset_token(db, token=payload.token)
+        user = auth_service.consume_password_reset(
+            db,
+            reset_row=reset_row,
+            new_password=payload.password,
+        )
+    except auth_service.AuthError as err:
+        if err.code not in ("ACCOUNT_LOCKED", "WEAK_PASSWORD"):
+            rl.record_failure(db, key=key, ip_address=ip)
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+
+    rl.record_success(db, key=key)
+    try:
+        issued = auth_service.create_session(
+            db,
+            user=user,
+            ip_address=ip,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except auth_service.AuthError as err:
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+
+    db.commit()
+    response = success_response(PasswordResetResponse(reset=True).model_dump())
+    set_session_cookie(response, issued.token)
+    return response
+
+
+# --- Session management (unchanged shape, kept under same router) -----------
 
 
 @router.get("/me")
@@ -201,7 +295,7 @@ def select_role(
             user_id=ctx.user.id,
             desired_role=payload.role,
         )
-    except auth_service.InviteError as err:
+    except auth_service.AuthError as err:
         db.commit()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
     db.commit()

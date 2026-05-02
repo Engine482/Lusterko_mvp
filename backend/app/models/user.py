@@ -27,3 +27,6 @@ class User(UUIDPKMixin, TimestampMixin, Base):
         nullable=True,
     )
     status: Mapped[str] = mapped_column(String, nullable=False, server_default="active")
+    # NULL until the user accepts an invite or completes a password reset.
+    # Login rejects users with NULL password_hash.
+    password_hash: Mapped[str | None] = mapped_column(String, nullable=True)

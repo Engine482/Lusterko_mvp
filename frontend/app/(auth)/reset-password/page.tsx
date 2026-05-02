@@ -5,21 +5,18 @@ import { useState } from "react";
 import { authApi } from "@/lib/api/auth";
 import { describeError } from "@/lib/api/utils";
 
-// Sprint 7 — Invite Landing: user lands here from the email link, sets a
-// password (and optionally fixes their full name), and ends up logged in.
 const MIN_PASSWORD = 12;
 
 function readTokenFromUrl(): string {
   if (typeof window === "undefined") return "";
   const url = new URL(window.location.href);
-  return (
-    url.searchParams.get("token") ?? url.searchParams.get("invite_token") ?? ""
-  );
+  return url.searchParams.get("token") ?? "";
 }
 
-export default function InviteLandingPage() {
+// Sprint 7 — Reset Password screen. Token comes in from the email link;
+// successful submit logs the user in and redirects to their role home.
+export default function ResetPasswordPage() {
   const [token, setToken] = useState<string>(readTokenFromUrl);
-  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -38,11 +35,7 @@ export default function InviteLandingPage() {
     setLoading(true);
     setError(null);
     try {
-      await authApi.acceptInvite({
-        token,
-        full_name: fullName.trim() || undefined,
-        password,
-      });
+      await authApi.passwordReset(token, password);
       const me = await authApi.me();
       if (me.role_selection_required) {
         window.location.assign("/role");
@@ -64,35 +57,24 @@ export default function InviteLandingPage() {
 
   return (
     <section>
-      <h1>Вхід за інвайтом</h1>
+      <h1>Новий пароль</h1>
       <p>
-        Встановіть пароль для свого акаунта в Lusterko. Email — це той, на який
-        вам надійшло запрошення.
+        Задайте новий пароль для свого акаунта. Після збереження ви увійдете
+        автоматично; усі попередні сесії будуть припинені.
       </p>
       <form className="form-grid" onSubmit={submit} noValidate>
         <label>
-          Інвайт-токен
+          Токен скидання
           <input
             type="text"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            placeholder="вставте токен"
             required
             minLength={10}
           />
         </label>
         <label>
-          Повне ім&apos;я
-          <input
-            type="text"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            placeholder="Прізвище Ім'я"
-            autoComplete="name"
-          />
-        </label>
-        <label>
-          Пароль (мінімум {MIN_PASSWORD} символів)
+          Новий пароль (мінімум {MIN_PASSWORD} символів)
           <input
             type="password"
             value={password}
@@ -103,7 +85,7 @@ export default function InviteLandingPage() {
           />
         </label>
         <label>
-          Підтвердження паролю
+          Підтвердження
           <input
             type="password"
             value={confirm}
@@ -114,13 +96,12 @@ export default function InviteLandingPage() {
           />
         </label>
         <button type="submit" className="btn" disabled={loading}>
-          {loading ? "Встановлення..." : "Встановити пароль і увійти"}
+          {loading ? "Збереження..." : "Зберегти пароль"}
         </button>
         {error && <div className="alert alert--error">{error}</div>}
       </form>
-      <p style={{ fontSize: "0.875rem", marginTop: 24 }}>
-        Інвайт одноразовий і має термін дії. Після успішного входу токен стає
-        недійсним.
+      <p style={{ marginTop: 24 }}>
+        <a href="/login">Назад до входу</a>
       </p>
     </section>
   );

@@ -13,16 +13,12 @@ from app.models.daily_checkin import DailyCheckin
 from app.models.go_no_go_test import GoNoGoTest
 from app.models.reaction_test import ReactionTest
 from app.modules.ai import parser as ai_parser
-from tests.factories import issue_invite_for, make_user
+from tests.factories import login_as, make_user
 
 
 def _login_soldier(client: TestClient, email: str) -> None:
     user = make_user(email=email, roles=("soldier",))
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1}
-    )
+    login_as(client, user)
 
 
 def _complete_baseline(client: TestClient) -> None:
@@ -286,11 +282,7 @@ def test_due_state_cognitive_after_old_submission(client: TestClient) -> None:
 
 def test_weekly_endpoints_reject_non_soldier(client: TestClient) -> None:
     user = make_user(email="cmdw@example.com", roles=("commander",))
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1}
-    )
+    login_as(client, user)
     blocked = client.post("/api/v1/soldier/weekly/phq4", json={"answers": [0, 0, 0, 0]})
     assert blocked.status_code == 403
 

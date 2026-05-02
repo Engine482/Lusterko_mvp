@@ -181,7 +181,7 @@ MVP має бути не “максимально розумною систем
 
 
 Web app із mobile-friendly інтерфейсом.
-Invite-based доступ, Google OAuth, multi-role access, role selection і role switching.
+Invite-based доступ, email+password, multi-role access, role selection і role switching.
 Soldier-side assessment flow: baseline, daily, weekly, cognitive.
 Assessment Framework із self-report, cognitive і text layers.
 AI text interpretation module.
@@ -458,7 +458,7 @@ Risk Engine не є діагностичною системою, не замін
 
 
 
-Вхід у систему через інвайт і Google OAuth.
+Вхід у систему через інвайт + встановлення паролю; повторний вхід — email+password.
 Вибір ролі після входу.
 Зміна ролі всередині системи.
 Первинне підключення і baseline onboarding.
@@ -571,7 +571,7 @@ Administration Layer.
 
 
 
-Auth flow: invite → Google OAuth → session → active role → role-specific interface.
+Auth flow: invite → set password → session → active role → role-specific interface; повторний вхід — email+password з тим же session-cookie контуром.
 Soldier assessment flow: input → save → normalization → AI if text → Risk Engine → updated
 status.
 Commander flow: dashboard request → scope validation → aggregated data.
@@ -589,7 +589,7 @@ Frontend: React / Next.js.
 Backend: Python (FastAPI) або Node.js.
 Database: PostgreSQL.
 AI integration: LLM API через thin wrapper / service layer.
-Auth: Google OAuth.
+Auth: first-party email+password (argon2id). Див. ADR `docs/06_decisions/2026-05-02-auth-email-password.md`.
 
 
 
@@ -602,20 +602,27 @@ analytics, wearables та predictive ML platform.
 14. Authorization & Access Model / Модель авторизації та доступу
 14.1. Загальний принцип
 У межах MVP використовується керована invite-based модель доступу: адміністратор створює
-користувача, задає email і ролі, генерує інвайт, користувач входить через Google OAuth, після
-чого система відкриває сесію.
+користувача, задає email і ролі, генерує інвайт, користувач переходить за посиланням з
+інвайт-листа, встановлює пароль, після чого система відкриває сесію.
 
 14.2. Invite-based access flow
-Інвайт пов’язується з конкретним користувачем та email, має строк дії і не повинен працювати
-повторно.
+Інвайт пов’язується з конкретним користувачем та email, має строк дії (7 днів) і не повинен
+працювати повторно. Прийняття інвайта — це момент, коли встановлюється початковий пароль.
 
-14.3. Google OAuth flow
-Google OAuth є основним способом підтвердження identity в MVP. Він підтверджує identity, але
-не визначає ролі — ролі і scope задаються тільки внутрішньою моделлю системи.
+14.3. Email + password authentication
+> **Sprint 7 Auth Pivot:** з 2026-05-02 first-party email+password замінив Google OAuth як
+> primary auth. Повний rationale: `docs/06_decisions/2026-05-02-auth-email-password.md`.
+> Google OAuth і user_identities-таблицю прибрано без backward-сумісних слідів.
+
+Параметри: argon2id-хеш паролю (мінімум 12 символів), скидання паролю через токенізоване
+посилання в email (TTL 1 год), session-cookie 30д rolling, rate-limit 5/15хв на пару (IP, email)
+з soft-lockout 5хв і експоненційним backoff. Без 2FA на P0. SSO/SAML відкладено до V1.
 
 14.4. Identity model
-Користувач і його спосіб входу — це різні сутності. Це дозволяє підтримувати Google зараз і
-додати local або інші providers пізніше.
+Користувач і його credentials — це різні сутності в моделі (`users.password_hash` як
+nullable атрибут). Це дозволяє за потреби пізніше додати paralel-провайдер (OIDC/SAML)
+без переписування user-модеі — passwords залишаться як один із способів входу або стануть
+nullable.
 
 14.5. Multi-role access model
 Один користувач може мати кілька ролей одночасно. Для однозначності доступу
@@ -706,8 +713,10 @@ Commander API, Medic / Psychologist API, Internal AI API.
 
 
 
-GET /api/v1/auth/google/start?invite_token=…
-GET /api/v1/auth/google/callback?...
+POST /api/v1/auth/login
+POST /api/v1/auth/invite/accept
+POST /api/v1/auth/password/forgot
+POST /api/v1/auth/password/reset
 GET /api/v1/auth/me
 POST /api/v1/auth/select-role
 POST /api/v1/auth/refresh
@@ -808,8 +817,8 @@ cognitive soldier endpoints, commander dashboard, medic detailed case і interna
 
 
 Керований доступ лише для створених адміністратором користувачів.
-Invite-based login.
-Google OAuth.
+Invite-based login (інвайт → встановлення паролю).
+Email + password authentication (argon2id, 12+ chars, rate-limited).
 Multi-role model.
 Role selection after login.
 In-app role switching.
@@ -923,8 +932,8 @@ Performance expectations.
 Error handling policy.
 
 18.2. Security model
-Система повинна працювати як закритий керований контур із invite validation, Google identity
-verification і blocking inactive users.
+Система повинна працювати як закритий керований контур із invite validation, argon2id
+password verification, brute-force lockout і blocking inactive users.
 
 18.3. Session security
 Сесія повинна підтримувати active role, refresh flow, logout і інвалідацію при деактивації
@@ -947,8 +956,9 @@ AI використовується лише для structured text analysis, н
 все одно зберігається.
 
 18.8. Security-critical P0 requirements
-До нефункціонального P0 належать HTTPS, invite validation, Google identity verification, activerole-based RBAC, deactivated-user blocking, logout with session invalidation, базовий аудит, AI
-guardrails і duplicate protection.
+До нефункціонального P0 належать HTTPS, invite validation, argon2id password storage,
+brute-force lockout, active-role-based RBAC, deactivated-user blocking, logout with session
+invalidation, базовий аудит, AI guardrails і duplicate protection.
 
 19. Dev Backlog Specification / Backlog розробки
 19.1. Основні епіки
@@ -979,9 +989,10 @@ Epic K — Audit & Security
 Epic L — UI Infrastructure
 
 19.2. P0 release slice
-До P0 входять invite-based Google OAuth login, multi-role model, role selection і switching, admin
-provisioning, soldier baseline / daily / weekly / cognitive flows, AI text parsing, Risk Engine basic,
-commander dashboard, medic detailed case, server-side RBAC і базовий audit trail.
+До P0 входять invite-based email+password login (з password reset), multi-role model, role
+selection і switching, admin provisioning, soldier baseline / daily / weekly / cognitive flows,
+AI text parsing, Risk Engine basic, commander dashboard, medic detailed case, server-side RBAC,
+brute-force lockout і базовий audit trail.
 
 19.3. P1 release slice
 До P1 належать polished explanations, risk history, case workflow, notes, auto-open case logic,
@@ -1308,8 +1319,9 @@ Weekly і cognitive сценарії теж мають бути коротким
 Потрібна рольова дисципліна.
 
 24.6. Найважливіші обмеження MVP
-Web app only, standalone deployment, invite-based access only, Google OAuth як primary auth
-path, multi-role але одна active role за раз, short daily flow only, limited assessment set, AI only for
+Web app only, standalone deployment, invite-based access only, email+password (argon2id) як
+primary auth path, multi-role але одна active role за раз, short daily flow only, limited
+assessment set, AI only for
 structured text analysis, rule-based Risk Engine only, no diagnosis / no therapy / no autonomous
 decisions, limited pilot scope, strict MVP scope discipline.
 

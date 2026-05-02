@@ -1,4 +1,4 @@
-"""Invite email delivery tests (TASK-6406)."""
+"""Invite + password-reset email delivery tests."""
 
 from __future__ import annotations
 
@@ -14,11 +14,16 @@ from app.modules.notifications import mailer as mailer_mod
 from tests.factories import issue_invite_for, make_user
 
 
+GOOD_PASSWORD = "correct horse battery staple"
+
+
 def _login_admin(client: TestClient, email: str) -> None:
     user = make_user(email=email, roles=("admin",))
     token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get("/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1})
+    client.post(
+        "/api/v1/auth/invite/accept",
+        json={"token": token, "password": GOOD_PASSWORD},
+    )
 
 
 @pytest.fixture
@@ -29,7 +34,9 @@ def stub_mailer() -> mailer_mod.StubMailer:
     mailer_mod.set_mailer(None)
 
 
-def test_stub_mailer_records_invite_url(client: TestClient, stub_mailer: mailer_mod.StubMailer) -> None:
+def test_stub_mailer_records_invite_url(
+    client: TestClient, stub_mailer: mailer_mod.StubMailer
+) -> None:
     _login_admin(client, "admin-mail-1@example.com")
     target = make_user(email="invitee-mail-1@example.com")
 
@@ -37,8 +44,8 @@ def test_stub_mailer_records_invite_url(client: TestClient, stub_mailer: mailer_
     assert res.status_code == 200, res.text
     token = res.json()["data"]["token"]
 
-    assert len(stub_mailer.sent) == 1
-    msg = stub_mailer.sent[0]
+    assert len(stub_mailer.sent_invites) == 1
+    msg = stub_mailer.sent_invites[0]
     assert msg.to_email == "invitee-mail-1@example.com"
     assert token in msg.invite_url
     assert msg.invite_url.endswith(f"/invite?token={token}")
@@ -55,7 +62,14 @@ def test_smtp_failure_does_not_break_invite_creation(
     class FailingMailer:
         name = "failing"
 
-        def send_invite(self, msg: mailer_mod.InviteEmail) -> mailer_mod.SendResult:
+        def send_invite(
+            self, msg: mailer_mod.InviteEmail
+        ) -> mailer_mod.SendResult:
+            return mailer_mod.SendResult(ok=False, error="connection refused")
+
+        def send_password_reset(
+            self, msg: mailer_mod.PasswordResetEmail
+        ) -> mailer_mod.SendResult:
             return mailer_mod.SendResult(ok=False, error="connection refused")
 
     mailer_mod.set_mailer(FailingMailer())
@@ -77,9 +91,9 @@ def test_smtp_failure_does_not_break_invite_creation(
     assert "invite_email_sent" not in events
 
 
-def test_smtp_mailer_swallows_exception_as_send_result(monkeypatch: pytest.MonkeyPatch) -> None:
-    """Even raw smtplib errors must not propagate — SendResult.ok=False."""
-
+def test_smtp_mailer_swallows_exception_for_invite(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     def boom(*args: object, **kwargs: object) -> object:
         raise smtplib.SMTPException("nope")
 
@@ -98,3 +112,26 @@ def test_smtp_mailer_swallows_exception_as_send_result(monkeypatch: pytest.Monke
     )
     assert result.ok is False
     assert result.error and "nope" in result.error
+
+
+def test_smtp_mailer_swallows_exception_for_password_reset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def boom(*args: object, **kwargs: object) -> object:
+        raise smtplib.SMTPException("smtp down")
+
+    monkeypatch.setattr(smtplib, "SMTP", boom)
+
+    smtp = mailer_mod.SmtpMailer(
+        host="example.invalid", port=587, from_email="from@example.com"
+    )
+    result = smtp.send_password_reset(
+        mailer_mod.PasswordResetEmail(
+            to_email="to@example.com",
+            to_full_name="Test",
+            reset_url="https://lusterko.example/reset-password?token=abc",
+            expires_at_iso="2026-01-01T00:00:00+00:00",
+        )
+    )
+    assert result.ok is False
+    assert result.error and "smtp down" in result.error

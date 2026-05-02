@@ -7,17 +7,12 @@ from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.models.audit_log import AuditLog
-from tests.factories import issue_invite_for, make_unit, make_user
+from tests.factories import login_as, make_unit, make_user
 
 
 def _login(client: TestClient, *, email: str, roles: tuple[str, ...]) -> None:
     user = make_user(email=email, roles=tuple(roles))  # type: ignore[arg-type]
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback",
-        params={"state": token, "dev_stub": 1},
-    )
+    login_as(client, user)
 
 
 def test_t_admin_001_create_user(client: TestClient) -> None:
@@ -99,11 +94,7 @@ def test_t_rbac_004_active_role_governs_admin(client: TestClient) -> None:
     """Soldier+admin user gets blocked when active role is 'soldier'."""
 
     user = make_user(email="multi-admin@example.com", roles=("soldier", "admin"))
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1}
-    )
+    login_as(client, user)
     # Multi-role: must pick an active role first.
     client.post("/api/v1/auth/select-role", json={"role": "soldier"})
 
@@ -127,11 +118,7 @@ def test_inactive_user_session_denied(client: TestClient) -> None:
     """Deactivated user with a still-existing session loses access immediately."""
 
     user = make_user(email="alive-then-deact@example.com", roles=("admin",))
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1}
-    )
+    login_as(client, user)
     # First call works.
     assert client.get("/api/v1/admin/users").status_code == 200
 

@@ -1,16 +1,16 @@
-"""Outbound email delivery for invites (TASK-6401..6406).
+"""Outbound email delivery for invites and password resets.
 
 Mirrors the AI-parser strategy pattern (see `app/modules/ai/parser.py`):
-- `StubMailer` records sent invites in-memory; default for dev/test, no IO.
+- `StubMailer` records sent messages in-memory; default for dev/test, no IO.
 - `SmtpMailer` talks to a real SMTP server via stdlib `smtplib` + STARTTLS.
 
 Selection: `LUSTERKO_MAILER=stub|smtp|auto`. `auto` (default) picks `smtp` if
 `SMTP_HOST` is set, otherwise `stub`. Tests can call `set_mailer()` to inject
 a sentinel without touching env.
 
-Errors never propagate to the caller. The admin invite endpoint must keep
-working even if the SMTP server is misconfigured — the invite token is the
-source of truth, the email is a delivery convenience (PRD §22.4 spirit).
+Errors never propagate to the caller. Invite creation and password-reset
+issuance must keep working even if the SMTP server is misconfigured — the
+token is the source of truth, the email is a delivery convenience.
 """
 
 from __future__ import annotations
@@ -37,6 +37,14 @@ class InviteEmail:
 
 
 @dataclass(frozen=True)
+class PasswordResetEmail:
+    to_email: str
+    to_full_name: str
+    reset_url: str
+    expires_at_iso: str
+
+
+@dataclass(frozen=True)
 class SendResult:
     ok: bool
     error: str | None = None
@@ -46,19 +54,20 @@ class Mailer(Protocol):
     name: str
 
     def send_invite(self, msg: InviteEmail) -> SendResult: ...
+    def send_password_reset(self, msg: PasswordResetEmail) -> SendResult: ...
 
 
 # --- Templating -------------------------------------------------------------
 
 
-_SUBJECT = "Запрошення до Lusterko"
+_INVITE_SUBJECT = "Запрошення до Lusterko"
 
-_PLAINTEXT_TEMPLATE = """\
+_INVITE_PLAINTEXT = """\
 Вітаємо, {full_name}!
 
 Вас запрошено до системи Lusterko (моніторинг психологічного стану).
 
-Щоб увійти, перейдіть за посиланням:
+Щоб встановити пароль і увійти, перейдіть за посиланням:
 {invite_url}
 
 Запрошення дійсне до {expires_at}.
@@ -68,13 +77,13 @@ _PLAINTEXT_TEMPLATE = """\
 — Команда Lusterko
 """
 
-_HTML_TEMPLATE = """\
+_INVITE_HTML = """\
 <!doctype html>
 <html lang="uk">
 <body style="font-family: -apple-system, Arial, sans-serif; line-height: 1.5;">
   <p>Вітаємо, {full_name}!</p>
   <p>Вас запрошено до системи <b>Lusterko</b> (моніторинг психологічного стану).</p>
-  <p>Щоб увійти, перейдіть за посиланням:</p>
+  <p>Щоб встановити пароль і увійти, перейдіть за посиланням:</p>
   <p><a href="{invite_url}">{invite_url}</a></p>
   <p style="color:#666; font-size: 13px;">Запрошення дійсне до {expires_at}.</p>
   <p style="color:#666; font-size: 13px;">
@@ -86,22 +95,82 @@ _HTML_TEMPLATE = """\
 """
 
 
-def _build_email_message(msg: InviteEmail, *, from_email: str) -> EmailMessage:
+_RESET_SUBJECT = "Скидання паролю в Lusterko"
+
+_RESET_PLAINTEXT = """\
+Вітаємо, {full_name}!
+
+Ми отримали запит на скидання паролю до вашого акаунта в Lusterko.
+
+Щоб задати новий пароль, перейдіть за посиланням:
+{reset_url}
+
+Посилання дійсне до {expires_at}.
+
+Якщо ви не запитували скидання — проігноруйте цей лист, ваш пароль не змінився.
+
+— Команда Lusterko
+"""
+
+_RESET_HTML = """\
+<!doctype html>
+<html lang="uk">
+<body style="font-family: -apple-system, Arial, sans-serif; line-height: 1.5;">
+  <p>Вітаємо, {full_name}!</p>
+  <p>Ми отримали запит на скидання паролю до вашого акаунта в <b>Lusterko</b>.</p>
+  <p>Щоб задати новий пароль, перейдіть за посиланням:</p>
+  <p><a href="{reset_url}">{reset_url}</a></p>
+  <p style="color:#666; font-size: 13px;">Посилання дійсне до {expires_at}.</p>
+  <p style="color:#666; font-size: 13px;">
+    Якщо ви не запитували скидання — проігноруйте цей лист, ваш пароль не змінився.
+  </p>
+  <p>— Команда Lusterko</p>
+</body>
+</html>
+"""
+
+
+def _build_invite_message(msg: InviteEmail, *, from_email: str) -> EmailMessage:
     em = EmailMessage()
-    em["Subject"] = _SUBJECT
+    em["Subject"] = _INVITE_SUBJECT
     em["From"] = from_email
     em["To"] = msg.to_email
     em.set_content(
-        _PLAINTEXT_TEMPLATE.format(
+        _INVITE_PLAINTEXT.format(
             full_name=msg.to_full_name,
             invite_url=msg.invite_url,
             expires_at=msg.expires_at_iso,
         )
     )
     em.add_alternative(
-        _HTML_TEMPLATE.format(
+        _INVITE_HTML.format(
             full_name=msg.to_full_name,
             invite_url=msg.invite_url,
+            expires_at=msg.expires_at_iso,
+        ),
+        subtype="html",
+    )
+    return em
+
+
+def _build_reset_message(
+    msg: PasswordResetEmail, *, from_email: str
+) -> EmailMessage:
+    em = EmailMessage()
+    em["Subject"] = _RESET_SUBJECT
+    em["From"] = from_email
+    em["To"] = msg.to_email
+    em.set_content(
+        _RESET_PLAINTEXT.format(
+            full_name=msg.to_full_name,
+            reset_url=msg.reset_url,
+            expires_at=msg.expires_at_iso,
+        )
+    )
+    em.add_alternative(
+        _RESET_HTML.format(
+            full_name=msg.to_full_name,
+            reset_url=msg.reset_url,
             expires_at=msg.expires_at_iso,
         ),
         subtype="html",
@@ -115,13 +184,22 @@ def _build_email_message(msg: InviteEmail, *, from_email: str) -> EmailMessage:
 @dataclass
 class StubMailer:
     name: str = "stub"
-    sent: list[InviteEmail] = field(default_factory=list)
+    sent_invites: list[InviteEmail] = field(default_factory=list)
+    sent_resets: list[PasswordResetEmail] = field(default_factory=list)
 
     def send_invite(self, msg: InviteEmail) -> SendResult:
-        self.sent.append(msg)
+        self.sent_invites.append(msg)
         logger.info(
             "invite_email_stub_sent",
             extra={"to": msg.to_email, "invite_url": msg.invite_url},
+        )
+        return SendResult(ok=True)
+
+    def send_password_reset(self, msg: PasswordResetEmail) -> SendResult:
+        self.sent_resets.append(msg)
+        logger.info(
+            "password_reset_email_stub_sent",
+            extra={"to": msg.to_email, "reset_url": msg.reset_url},
         )
         return SendResult(ok=True)
 
@@ -136,8 +214,7 @@ class SmtpMailer:
     use_tls: bool = True
     from_email: str = ""
 
-    def send_invite(self, msg: InviteEmail) -> SendResult:
-        em = _build_email_message(msg, from_email=self.from_email or self.username)
+    def _send(self, em: EmailMessage, to_email: str, kind: str) -> SendResult:
         try:
             with smtplib.SMTP(self.host, self.port, timeout=10) as s:
                 s.ehlo()
@@ -150,10 +227,18 @@ class SmtpMailer:
             return SendResult(ok=True)
         except Exception as err:  # noqa: BLE001 — mailer must never propagate
             logger.warning(
-                "invite_email_smtp_failed",
-                extra={"to": msg.to_email, "error": str(err)},
+                f"{kind}_email_smtp_failed",
+                extra={"to": to_email, "error": str(err)},
             )
             return SendResult(ok=False, error=str(err))
+
+    def send_invite(self, msg: InviteEmail) -> SendResult:
+        em = _build_invite_message(msg, from_email=self.from_email or self.username)
+        return self._send(em, msg.to_email, kind="invite")
+
+    def send_password_reset(self, msg: PasswordResetEmail) -> SendResult:
+        em = _build_reset_message(msg, from_email=self.from_email or self.username)
+        return self._send(em, msg.to_email, kind="password_reset")
 
 
 # --- Selection --------------------------------------------------------------
@@ -197,3 +282,7 @@ def set_mailer(mailer: Mailer | None) -> None:
 
 def build_invite_url(base_url: str, token: str) -> str:
     return f"{base_url.rstrip('/')}/invite?token={token}"
+
+
+def build_password_reset_url(base_url: str, token: str) -> str:
+    return f"{base_url.rstrip('/')}/reset-password?token={token}"

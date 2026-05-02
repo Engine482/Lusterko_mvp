@@ -27,6 +27,7 @@ Constraints:
 - `email text not null`
 - `unit_id uuid null references units(id)`
 - `status text not null default 'active'`
+- `password_hash text null` — argon2id PHC string; NULL means the user has not yet accepted their invite or finished a password reset (login rejects such rows)
 - `created_at timestamptz not null default now()`
 - `updated_at timestamptz not null default now()`
 
@@ -54,20 +55,19 @@ Constraints:
 - unique (`user_id`, `role`)
 - check `role in ('soldier', 'commander', 'medic_psych', 'admin')`
 
-### 2.4 `user_identities`
+### 2.4 `password_reset_tokens`
 - `id uuid pk`
 - `user_id uuid not null references users(id) on delete cascade`
-- `provider text not null`
-- `provider_subject text not null`
-- `email_at_provider text null`
+- `token_hash text not null` — sha-256 of the plaintext token (the plaintext is only ever in the email)
+- `expires_at timestamptz not null` — typically 1 hour after issuance (see `PASSWORD_RESET_TTL`)
+- `consumed_at timestamptz null` — set when the user submits a successful reset
 - `created_at timestamptz not null default now()`
 
-Allowed provider:
-- `google`
-
 Constraints:
-- unique (`provider`, `provider_subject`)
-- check `provider in ('google')`
+- unique (`token_hash`)
+- index (`user_id`)
+
+> Sprint 7 replaced the prior `user_identities` table (Google OAuth subject mapping) with this table. See `docs/06_decisions/2026-05-02-auth-email-password.md` for rationale.
 
 ### 2.5 `auth_invites`
 - `id uuid pk`
@@ -112,6 +112,21 @@ Allowed status:
 - `active`
 - `revoked`
 - `expired`
+
+### 2.7 `auth_lockouts`
+- `id uuid pk`
+- `key text not null` — composite key encoding endpoint + (IP, email) coordinate, e.g. `login:1.2.3.4:user@example.com`
+- `failed_count integer not null default 0`
+- `cycle integer not null default 0` — exponential-backoff cycle index (0 → BASE, 1 → 2× BASE, ...)
+- `locked_until timestamptz null`
+- `last_failure_at timestamptz not null default now()`
+- `updated_at timestamptz not null default now()`
+
+Constraints:
+- unique (`key`)
+- index (`key`), index (`locked_until`)
+
+> Brute-force protection state for `/auth/login`, `/auth/invite/accept`, `/auth/password/forgot`, `/auth/password/reset`. Threshold 5 failures / 15-min sliding window; lock 5 min on first cycle, exponential backoff capped at 24 h. Successful auth deletes the row.
 
 ## 3. Baseline та оцінки
 ### 3.1 `baseline_profiles`
@@ -328,6 +343,13 @@ Suggested event types:
 - `user_reactivated`
 - `invite_created`
 - `invite_used`
+- `invite_email_sent`
+- `invite_email_failed`
+- `password_reset_requested`
+- `password_reset_completed`
+- `password_reset_email_sent`
+- `password_reset_email_failed`
+- `account_locked`
 - `daily_checkin_submitted`
 - `weekly_phq4_submitted`
 - `weekly_pss4_submitted`
@@ -350,6 +372,15 @@ Suggested event types:
 - index on `user_id`
 - index on `status`
 - index on `expires_at`
+
+### password_reset_tokens
+- index on `user_id`
+- unique on `token_hash`
+
+### auth_lockouts
+- unique on `key`
+- index on `key`
+- index on `locked_until`
 
 ### user_sessions
 - index on `user_id`

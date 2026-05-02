@@ -12,16 +12,12 @@ from app.db.session import SessionLocal
 from app.models.risk_event import RiskEvent
 from app.models.risk_rule_hit import RiskRuleHit
 from app.models.risk_status import RiskStatusRow
-from tests.factories import issue_invite_for, make_unit, make_user
+from tests.factories import login_as, make_unit, make_user
 
 
 def _login(client: TestClient, email: str, *, roles=("soldier",), unit_id=None):  # type: ignore[no-untyped-def]
     user = make_user(email=email, roles=roles, unit_id=unit_id)
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1}
-    )
+    login_as(client, user)
     return user
 
 

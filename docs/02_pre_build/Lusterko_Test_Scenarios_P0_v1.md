@@ -12,7 +12,7 @@
 ## 2. Що входить у P0 test scope
 ### 2.1 Auth & access
 - invite-based login
-- Google OAuth flow
+- Email+password flow (login, invite/accept, password reset, lockout)
 - multi-role model
 - role selection
 - role switching
@@ -94,34 +94,88 @@
 - repeated high text risk profile
 
 ## 6. Auth & access test cases
-### T-AUTH-001 — valid invite login
+
+> **Sprint 7 update:** scenarios refit for email+password flow per ADR
+> `docs/06_decisions/2026-05-02-auth-email-password.md`. Google OAuth path
+> was removed.
+
+### T-AUTH-001 — invite/accept creates session
 Expected:
-- invite accepted
-- session created
-- user authenticated
-- audit log created
+- invite consumed, password_hash set
+- session created, cookie issued
+- audit `invite_used` + `login_success`
 
 ### T-AUTH-002 — expired invite rejected
 Expected:
-- login denied
-- clear auth error state
+- accept denied with `INVITE_EXPIRED`
 - no session created
 
 ### T-AUTH-003 — invite cannot be reused
 Expected:
-- second use rejected
-- no duplicate session
+- first accept succeeds
+- second accept with same token returns `INVALID_INVITE`
 
 ### T-AUTH-004 — inactive user blocked
 Expected:
-- login blocked
-- no active session
-- audit/security event logged
+- accept returns `UNAUTHORIZED`; no session
 
 ### T-AUTH-005 — single-role user auto-enters role
 ### T-AUTH-006 — multi-role user forced to choose role
 ### T-AUTH-007 — role switch updates permission context
 ### T-AUTH-008 — active role not assigned is rejected
+
+### T-AUTH-009 — login with correct password
+Expected:
+- 200, `logged_in: true`, session cookie set
+- audit `login_success`
+
+### T-AUTH-010 — login with wrong password
+Expected:
+- generic `UNAUTHORIZED` (no enumeration leak)
+- audit `login_failed` with `reason=UNAUTHORIZED`
+
+### T-AUTH-011 — login locked after threshold
+Expected:
+- after 5 wrong attempts → `ACCOUNT_LOCKED` (HTTP 429)
+- correct password during lock window also returns `ACCOUNT_LOCKED`
+- audit `account_locked`
+- after lock TTL passes, correct password works again
+
+### T-AUTH-012 — successful login resets failure counter
+Expected:
+- 4 fails followed by a success → `auth_lockouts` row deleted
+- a subsequent fail starts the count at 1, not 5
+
+### T-AUTH-013 — exponential backoff between lock cycles
+Expected:
+- second lock window is 2× the first; cycle counter increments
+
+### T-AUTH-014 — weak password rejected on invite/accept
+Expected:
+- `WEAK_PASSWORD` returned, no user mutation, no session
+- failure does not count toward the rate-limit (UX hint, not brute-force)
+
+### T-AUTH-015 — password forgot is anti-enumeration
+Expected:
+- known + unknown email both return identical envelope (`queued: true`)
+- only known emails actually trigger the mailer
+- repeated calls eventually trip the silent rate-limit (response shape unchanged)
+
+### T-AUTH-016 — password reset full flow
+Expected:
+- reset email queued; token in URL
+- POST `/auth/password/reset` with token + new password → success
+- old password no longer works; new one does
+- all prior sessions revoked
+- audit `password_reset_requested` + `password_reset_completed`
+
+### T-AUTH-017 — reset token cannot be reused
+Expected:
+- second submission with same token → `INVALID_RESET_TOKEN`
+
+### T-AUTH-018 — expired reset token rejected
+Expected:
+- past `expires_at` → `RESET_TOKEN_EXPIRED`
 
 ## 7. Soldier baseline tests
 ### T-SOLDIER-001 — onboarding status reflects incomplete baseline

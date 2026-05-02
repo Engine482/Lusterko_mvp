@@ -1,8 +1,10 @@
-"""Auth orchestration: invite lifecycle + session lifecycle + login.
+"""Auth orchestration: invite lifecycle, session lifecycle, login,
+password reset.
 
-Implements API Contracts §3 and Backlog TASK-1001..1008. Audit hooks for
-login_success/failed, logout, role_selected/switched, invite_used live here so
-callers in routes stay thin.
+Implements API Contracts §3 and Sprint 7 (Auth Pivot) per
+`docs/06_decisions/2026-05-02-auth-email-password.md`. Audit hooks for
+login_success/failed, logout, role_selected/switched, invite_used,
+password_reset_requested/completed live here so callers in routes stay thin.
 """
 
 from __future__ import annotations
@@ -15,11 +17,17 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import Role
-from app.core.cookies import INVITE_TTL, SESSION_TTL
-from app.core.security import generate_token, hash_token
+from app.core.cookies import INVITE_TTL, PASSWORD_RESET_TTL, SESSION_TTL
+from app.core.security import (
+    PasswordPolicyError,
+    generate_token,
+    hash_password,
+    hash_token,
+    verify_password,
+)
 from app.models.auth_invite import AuthInvite
+from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
-from app.models.user_identity import UserIdentity
 from app.models.user_role import UserRole
 from app.models.user_session import UserSession
 from app.services.audit_logger import log_event
@@ -34,7 +42,11 @@ class IssuedInvite:
     token: str  # plaintext; show to admin once and forget
 
 
-class InviteError(Exception):
+class AuthError(Exception):
+    """Auth-domain error raised by the service. Routes translate `code` to a
+    response envelope. Distinct from FastAPI's HTTPException so the service
+    stays framework-agnostic."""
+
     def __init__(self, code: str, message: str) -> None:
         super().__init__(message)
         self.code = code
@@ -93,13 +105,13 @@ def validate_invite_token(
         select(AuthInvite).where(AuthInvite.token_hash == hash_token(token))
     ).scalar_one_or_none()
     if invite is None:
-        raise InviteError("INVALID_INVITE", "Invite not found.")
+        raise AuthError("INVALID_INVITE", "Invite not found.")
     if invite.status == "used":
-        raise InviteError("INVALID_INVITE", "Invite already used.")
+        raise AuthError("INVALID_INVITE", "Invite already used.")
     if invite.status in {"revoked"}:
-        raise InviteError("INVALID_INVITE", "Invite revoked.")
+        raise AuthError("INVALID_INVITE", "Invite revoked.")
     if invite.expires_at <= now or invite.status == "expired":
-        raise InviteError("INVITE_EXPIRED", "Invite expired.")
+        raise AuthError("INVITE_EXPIRED", "Invite expired.")
     return invite
 
 
@@ -114,6 +126,64 @@ def consume_invite(db: Session, invite: AuthInvite, *, now: datetime | None = No
         entity_type="auth_invites",
         entity_id=invite.id,
     )
+
+
+# --- Login + invite acceptance ----------------------------------------------
+
+
+def authenticate(
+    db: Session,
+    *,
+    email: str,
+    password: str,
+) -> User:
+    """Verify credentials. Raises `AuthError("UNAUTHORIZED")` for any failure
+    mode (no user, wrong password, inactive user, no password set yet) so the
+    response is identical and we don't leak user existence.
+
+    The caller is responsible for auditing the failure with whatever metadata
+    it has (IP, attempted email)."""
+
+    user = db.execute(
+        select(User).where(User.email == email.lower().strip())
+    ).scalar_one_or_none()
+    if user is None or user.status != "active":
+        # Still hash a dummy password so the timing of "no user" matches
+        # "wrong password" and we don't leak account existence via timing.
+        verify_password(password, None)
+        raise AuthError("UNAUTHORIZED", "Invalid email or password.")
+    if not verify_password(password, user.password_hash):
+        raise AuthError("UNAUTHORIZED", "Invalid email or password.")
+    return user
+
+
+def accept_invite(
+    db: Session,
+    *,
+    token: str,
+    full_name: str | None,
+    password: str,
+    now: datetime | None = None,
+) -> User:
+    """Validate invite, set the user's password (and optionally full_name),
+    consume the invite. Returns the User row. Caller issues the session."""
+
+    now = now or datetime.now(timezone.utc)
+    invite = validate_invite_token(db, token=token, now=now)
+    user = db.get(User, invite.user_id)
+    if user is None or user.status != "active":
+        raise AuthError("UNAUTHORIZED", "User is not active.")
+
+    try:
+        password_hash_value = hash_password(password)
+    except PasswordPolicyError as err:
+        raise AuthError("WEAK_PASSWORD", str(err)) from err
+
+    user.password_hash = password_hash_value
+    if full_name is not None and full_name.strip():
+        user.full_name = full_name.strip()
+    consume_invite(db, invite, now=now)
+    return user
 
 
 # --- Session lifecycle -------------------------------------------------------
@@ -142,7 +212,7 @@ def create_session(
     now = now or datetime.now(timezone.utc)
     roles = _user_roles(db, user.id)
     if not roles:
-        raise InviteError("FORBIDDEN", "User has no roles assigned.")
+        raise AuthError("FORBIDDEN", "User has no roles assigned.")
 
     role_selected = len(roles) == 1
     active_role: Role = roles[0]
@@ -183,7 +253,7 @@ def select_role(
 ) -> None:
     roles = _user_roles(db, user_id)
     if desired_role not in roles:
-        raise InviteError("INVALID_ACTIVE_ROLE", "Role is not assigned to user.")
+        raise AuthError("INVALID_ACTIVE_ROLE", "Role is not assigned to user.")
     previous = session.active_role
     session.active_role = desired_role
     if not session.role_selected:
@@ -239,29 +309,108 @@ def revoke_session(
     )
 
 
-# --- Identity bridge ---------------------------------------------------------
+def revoke_all_sessions(db: Session, *, user_id: uuid.UUID) -> int:
+    """Revoke every active session for a user. Used on password reset so
+    stolen-credential reuse drops to zero across all devices."""
+
+    sessions = db.execute(
+        select(UserSession).where(
+            UserSession.user_id == user_id,
+            UserSession.status == "active",
+        )
+    ).scalars().all()
+    for s in sessions:
+        s.status = "revoked"
+    return len(sessions)
 
 
-def get_or_create_google_identity(
+# --- Password reset ----------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class IssuedPasswordReset:
+    reset: PasswordResetToken
+    token: str  # plaintext for the email
+
+
+def issue_password_reset(
     db: Session,
     *,
     user: User,
-    provider_subject: str,
-    email_at_provider: str,
-) -> UserIdentity:
-    identity = db.execute(
-        select(UserIdentity).where(
-            UserIdentity.provider == "google",
-            UserIdentity.provider_subject == provider_subject,
+    now: datetime | None = None,
+) -> IssuedPasswordReset:
+    """Always create a fresh token; existing unconsumed ones for the same
+    user are not revoked here — they will simply expire naturally. The login
+    surface is the same regardless, and not revoking avoids a self-DoS if
+    the user spam-clicks "forgot password"."""
+
+    now = now or datetime.now(timezone.utc)
+    token = generate_token()
+    row = PasswordResetToken(
+        user_id=user.id,
+        token_hash=hash_token(token),
+        expires_at=now + PASSWORD_RESET_TTL,
+    )
+    db.add(row)
+    db.flush()
+    log_event(
+        db,
+        event_type="password_reset_requested",
+        target_user_id=user.id,
+        entity_type="password_reset_tokens",
+        entity_id=row.id,
+    )
+    return IssuedPasswordReset(reset=row, token=token)
+
+
+def validate_password_reset_token(
+    db: Session,
+    *,
+    token: str,
+    now: datetime | None = None,
+) -> PasswordResetToken:
+    now = now or datetime.now(timezone.utc)
+    row = db.execute(
+        select(PasswordResetToken).where(
+            PasswordResetToken.token_hash == hash_token(token)
         )
     ).scalar_one_or_none()
-    if identity is None:
-        identity = UserIdentity(
-            user_id=user.id,
-            provider="google",
-            provider_subject=provider_subject,
-            email_at_provider=email_at_provider,
-        )
-        db.add(identity)
-        db.flush()
-    return identity
+    if row is None:
+        raise AuthError("INVALID_RESET_TOKEN", "Reset token not found.")
+    if row.consumed_at is not None:
+        raise AuthError("INVALID_RESET_TOKEN", "Reset token already used.")
+    if row.expires_at <= now:
+        raise AuthError("RESET_TOKEN_EXPIRED", "Reset token expired.")
+    return row
+
+
+def consume_password_reset(
+    db: Session,
+    *,
+    reset_row: PasswordResetToken,
+    new_password: str,
+    now: datetime | None = None,
+) -> User:
+    """Set the new password, consume the token, revoke other sessions, audit.
+    Returns the User. Caller issues a fresh session."""
+
+    now = now or datetime.now(timezone.utc)
+    user = db.get(User, reset_row.user_id)
+    if user is None or user.status != "active":
+        raise AuthError("UNAUTHORIZED", "User is not active.")
+
+    try:
+        user.password_hash = hash_password(new_password)
+    except PasswordPolicyError as err:
+        raise AuthError("WEAK_PASSWORD", str(err)) from err
+
+    reset_row.consumed_at = now
+    revoke_all_sessions(db, user_id=user.id)
+    log_event(
+        db,
+        event_type="password_reset_completed",
+        target_user_id=user.id,
+        entity_type="password_reset_tokens",
+        entity_id=reset_row.id,
+    )
+    return user

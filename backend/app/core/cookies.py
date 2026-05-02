@@ -21,8 +21,9 @@ from fastapi import Response
 from app.core.config import get_settings
 
 SESSION_COOKIE_NAME = "lusterko_session"
-SESSION_TTL = timedelta(days=14)
+SESSION_TTL = timedelta(days=30)
 INVITE_TTL = timedelta(days=7)
+PASSWORD_RESET_TTL = timedelta(hours=1)
 
 
 def is_secure_cookies() -> bool:
