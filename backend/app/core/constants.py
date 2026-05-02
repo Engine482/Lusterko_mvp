@@ -53,10 +53,6 @@ USER_STATUSES: Final[tuple[UserStatus, ...]] = ("active", "inactive")
 SessionStatus = Literal["active", "revoked", "expired"]
 SESSION_STATUSES: Final[tuple[SessionStatus, ...]] = ("active", "revoked", "expired")
 
-# --- Identity providers (P0: Google only) -------------------------------------
-IdentityProvider = Literal["google"]
-IDENTITY_PROVIDERS: Final[tuple[IdentityProvider, ...]] = ("google",)
-
 # --- Baseline step codes ------------------------------------------------------
 BaselineStep = Literal["phq4", "pss4", "sleep", "reaction_test", "go_no_go"]
 BASELINE_STEPS: Final[tuple[BaselineStep, ...]] = (
@@ -162,4 +158,9 @@ AuditEventType = Literal[
     "denied_sensitive_access",
     "invite_email_sent",
     "invite_email_failed",
+    "password_reset_requested",
+    "password_reset_completed",
+    "password_reset_email_sent",
+    "password_reset_email_failed",
+    "account_locked",
 ]

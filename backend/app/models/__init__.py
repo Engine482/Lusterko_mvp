@@ -20,7 +20,6 @@ from app.models.risk_rule_hit import RiskRuleHit
 from app.models.risk_status import RiskStatusRow
 from app.models.unit import Unit
 from app.models.user import User
-from app.models.user_identity import UserIdentity
 from app.models.user_role import UserRole
 from app.models.user_session import UserSession
 from app.models.weekly_phq4 import WeeklyPhq4Assessment
@@ -43,7 +42,6 @@ __all__ = [
     "RiskStatusRow",
     "Unit",
     "User",
-    "UserIdentity",
     "UserRole",
     "UserSession",
     "WeeklyPhq4Assessment",

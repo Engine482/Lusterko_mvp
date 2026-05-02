@@ -9,16 +9,12 @@ from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.models.daily_checkin import DailyCheckin
-from tests.factories import issue_invite_for, make_user
+from tests.factories import login_as, make_user
 
 
 def _login_soldier(client: TestClient, email: str = "soldier@example.com") -> None:
     user = make_user(email=email, roles=("soldier",))
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1}
-    )
+    login_as(client, user)
 
 
 def _complete_baseline(client: TestClient) -> None:
@@ -195,11 +191,7 @@ def test_t_daily_005_invalid_score_rejected(client: TestClient) -> None:
 
 def test_soldier_endpoints_reject_non_soldier(client: TestClient) -> None:
     user = make_user(email="cmd@example.com", roles=("commander",))
-    token = issue_invite_for(user.id)
-    client.get(f"/api/v1/auth/google/start?invite_token={token}")
-    client.get(
-        "/api/v1/auth/google/callback", params={"state": token, "dev_stub": 1}
-    )
+    login_as(client, user)
     res = client.get("/api/v1/soldier/onboarding-status")
     assert res.status_code == 403
     assert res.json()["error"]["code"] == "INVALID_ACTIVE_ROLE"

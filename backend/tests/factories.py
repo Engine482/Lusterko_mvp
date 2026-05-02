@@ -8,12 +8,19 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 
+from fastapi.testclient import TestClient
+
 from app.core.constants import Role
 from app.db.session import SessionLocal
 from app.models.unit import Unit
 from app.models.user import User
 from app.models.user_role import UserRole
 from app.modules.auth import service as auth_service
+
+
+# Long enough to satisfy the >=12 char policy with margin; deterministic
+# across tests so they are easy to read and replicate manually.
+TEST_PASSWORD = "test-password-1234"
 
 
 def make_unit(name: str = "Unit Alpha") -> Unit:
@@ -51,3 +58,24 @@ def issue_invite_for(user_id: uuid.UUID) -> str:
         issued = auth_service.issue_invite(db, user_id=user_id, created_by_user_id=None)
         db.commit()
         return issued.token
+
+
+def login_as(
+    client: TestClient,
+    user: User,
+    *,
+    password: str = TEST_PASSWORD,
+) -> None:
+    """Issue an invite, accept it, leaving `client` with an active session
+    cookie. The single-step helper that other modules call in fixtures so
+    each test does not have to know about invite tokens or password
+    policy."""
+
+    token = issue_invite_for(user.id)
+    res = client.post(
+        "/api/v1/auth/invite/accept",
+        json={"token": token, "password": password},
+    )
+    assert res.status_code == 200, res.text
+    body = res.json()
+    assert body["success"] is True, body

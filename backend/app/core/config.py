@@ -11,8 +11,6 @@ class Settings:
     database_url: str
     backend_host: str
     backend_port: int
-    google_client_id: str
-    google_client_secret: str
     app_public_base_url: str
 
     @property
@@ -37,7 +35,5 @@ def get_settings() -> Settings:
         ),
         backend_host=os.environ.get("BACKEND_HOST", "127.0.0.1"),
         backend_port=int(os.environ.get("BACKEND_PORT", "8001")),
-        google_client_id=os.environ.get("GOOGLE_CLIENT_ID", ""),
-        google_client_secret=os.environ.get("GOOGLE_CLIENT_SECRET", ""),
         app_public_base_url=os.environ.get("APP_PUBLIC_BASE_URL", "http://localhost:3001"),
     )

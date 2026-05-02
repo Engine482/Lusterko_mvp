@@ -1,15 +1,51 @@
-"""Pydantic schemas for `/api/v1/auth/*` per `Lusterko_API_Contracts_v1.md` §3."""
+"""Pydantic schemas for `/api/v1/auth/*` per `Lusterko_API_Contracts_v1.md` §3
+(Sprint 7 email+password auth)."""
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 from app.core.constants import Role
 from app.schemas.common import UserBrief
 
 
-class GoogleStartResponse(BaseModel):
-    redirect_url: str
+class LoginRequest(BaseModel):
+    email: EmailStr
+    password: str = Field(..., min_length=1)
+
+
+class LoginResponse(BaseModel):
+    logged_in: bool
+
+
+class InviteAcceptRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+    full_name: str | None = Field(default=None, max_length=200)
+    password: str = Field(..., min_length=1)
+
+
+class InviteAcceptResponse(BaseModel):
+    accepted: bool
+
+
+class PasswordForgotRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordForgotResponse(BaseModel):
+    # Always identical regardless of whether the email matched a real user —
+    # the frontend renders a single generic "if your email is registered…"
+    # message based on this flag.
+    queued: bool = True
+
+
+class PasswordResetRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+    password: str = Field(..., min_length=1)
+
+
+class PasswordResetResponse(BaseModel):
+    reset: bool
 
 
 class AuthMeResponse(BaseModel):
