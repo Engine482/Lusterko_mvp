@@ -355,3 +355,47 @@
 - TASK-5904 — RBAC leakage tests final
 - TASK-5905 — frontend smoke tests: medic flow
 - TASK-5906 — frontend smoke tests: audit screen
+
+## Sprint 6 — Deployment, Email Delivery, Pilot Bootstrap
+### EPIC-60 Production runtime (Docker)
+- TASK-6001 — Backend Dockerfile (multi-stage uv build → slim runtime)
+- TASK-6002 — Frontend Dockerfile (multi-stage `next build` → `next start`)
+- TASK-6003 — `infra/docker-compose.prod.yml` (backend + frontend + postgres-prod)
+- TASK-6004 — Окремий `lusterko-postgres-prod` контейнер з ізольованим volume і паролем (не `change_me`)
+- TASK-6005 — `.env.production.example` з переліком всіх обов'язкових prod-змінних
+
+### EPIC-61 Domain & TLS (lusterko.motornyi.com)
+- TASK-6101 — DNS A-запис `lusterko.motornyi.com` → IP сервера (виконує власник домену)
+- TASK-6102 — Nginx reverse proxy vhost у `infra/nginx/lusterko.conf` (`/` → frontend:3000, `/api/` → backend:8000)
+- TASK-6103 — Let's Encrypt cert через certbot + systemd timer renewal
+- TASK-6104 — Перевірити що `APP_ENV=production` дійсно вмикає `secure=True` для session cookie
+
+### EPIC-62 Deploy automation & ops
+- TASK-6201 — `scripts/deploy.sh` (git pull → docker compose build → alembic upgrade → recreate containers, без даунтайму postgres)
+- TASK-6202 — `scripts/backup_db.sh` + cron приклад (щоденний `pg_dump` prod БД у `/var/backups/lusterko`)
+- TASK-6203 — Healthchecks у `docker-compose.prod.yml` для backend (`/api/v1/health`), frontend, postgres
+- TASK-6204 — Structured logging у backend (JSON формат, читається `docker logs`)
+
+### EPIC-63 Config cleanup before pilot
+- TASK-6301 — Видалити `SESSION_SECRET` з `app/core/config.py` і env-шаблонів (мертвий конфіг — не використовується)
+- TASK-6302 — Узгодити frontend prod port: `next start -p 3000` для prod, dev лишається 3001
+- TASK-6303 — Завести реальний Google OAuth client для пілоту (production credentials), не stub
+- TASK-6304 — Guard у `seed_demo.py` — відмова при `APP_ENV=production` без явного `FORCE=1`
+
+### EPIC-64 Invite email delivery
+- TASK-6401 — Mailer service `app/modules/notifications/mailer.py` зі стратегіями `StubMailer` (dev) + `SmtpMailer` (prod), як AI parser pattern
+- TASK-6402 — Шаблон листа "Запрошення до Lusterko" українською (plaintext + minimal HTML) з повним інвайт-URL
+- TASK-6403 — Виклик mailer з `POST /api/v1/admin/users/{id}/invite` — best-effort, не блокує відповідь, помилка логується
+- TASK-6404 — Аудит-події `invite_email_sent` / `invite_email_failed`
+- TASK-6405 — env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`, `INVITE_FROM_EMAIL`, `APP_PUBLIC_BASE_URL`
+- TASK-6406 — Тести: stub mailer фіксує invite_url; SMTP-помилка не валить запит на створення інвайта
+
+### EPIC-65 Pilot bootstrap
+- TASK-6501 — Розширити `scripts/seed.py` параметром `BOOTSTRAP_USER_ROLES` (CSV) для multi-role admin
+- TASK-6502 — Виконати seed на prod БД: `ADMIN_EMAIL=motorny.v@gmail.com`, ролі `admin,soldier,commander,medic`, unit "Тестовий підрозділ"
+- TASK-6503 — Smoke перевірка: інвайт-лист реально дійшов на motorny.v@gmail.com → перший вхід → перемикання між усіма ролями
+
+### EPIC-66 Stabilization for pilot
+- TASK-6601 — CI крок: `docker compose -f infra/docker-compose.prod.yml build` (проста перевірка що Dockerfile-и не ламаються)
+- TASK-6602 — End-to-end smoke на pilot БД: invite → login → daily → weekly → cognitive → commander dashboard → medic case → close
+- TASK-6603 — README розділ "Production deployment" з покроковою інструкцією (DNS, certbot, env, deploy.sh)

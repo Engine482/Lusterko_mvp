@@ -160,4 +160,6 @@ AuditEventType = Literal[
     "cross_unit_access_denied",
     "medic_case_viewed",
     "denied_sensitive_access",
+    "invite_email_sent",
+    "invite_email_failed",
 ]

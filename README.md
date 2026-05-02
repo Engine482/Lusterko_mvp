@@ -95,3 +95,70 @@ Project-scoped MCP config lives in `.mcp.json` and includes only:
 - `postgres` for read-only schema inspection and smoke queries against the local database.
 
 Set `GITHUB_MCP_PAT` and `LUSTERKO_DATABASE_URL` in your shell or local `.env` before using those integrations.
+
+## Production deployment
+
+Pilot target: a single VPS at `lusterko.motornyi.com`. The production stack is
+`infra/docker-compose.prod.yml` (postgres + backend + frontend) fronted by
+host-level nginx + Let's Encrypt.
+
+### One-time host setup
+
+1. **DNS.** Point an `A` record `lusterko.motornyi.com` → VPS IP.
+2. **Packages.** Install Docker Engine + the compose plugin, plus `nginx` and
+   `certbot` (with `python3-certbot-nginx`).
+3. **Repo.** `git clone` this repo into `/opt/lusterko_mvp` (path is just a
+   convention; `scripts/deploy.sh` runs from the repo root).
+4. **Env file.** Copy `.env.production.example` → `.env.production` and fill
+   in real secrets (`POSTGRES_PASSWORD`, `DATABASE_URL`, Google OAuth client,
+   SMTP credentials). Never commit this file.
+5. **Google OAuth.** Create a real OAuth client in Google Cloud Console; set
+   the authorized redirect URI to
+   `https://lusterko.motornyi.com/api/v1/auth/google/callback` and put its
+   client id/secret into `.env.production`.
+6. **Nginx vhost.** Copy `infra/nginx/lusterko.conf` to
+   `/etc/nginx/sites-available/lusterko.conf`, symlink to
+   `/etc/nginx/sites-enabled/`, and `nginx -t && systemctl reload nginx`.
+7. **TLS.** First-time certificate:
+   ```bash
+   certbot --nginx -d lusterko.motornyi.com
+   ```
+   Certbot installs its own systemd timer; renewals are automatic. The vhost
+   serves `/.well-known/acme-challenge/` from `/var/www/certbot` for renewals.
+8. **Bootstrap admin.** Bring postgres up, migrate, and seed the pilot admin
+   with all roles:
+   ```bash
+   docker compose --env-file .env.production -f infra/docker-compose.prod.yml up -d postgres
+   docker compose --env-file .env.production -f infra/docker-compose.prod.yml run --rm \
+     -e ADMIN_EMAIL=motorny.v@gmail.com \
+     -e ADMIN_FULL_NAME="Motorny V." \
+     -e SEED_UNIT_NAME="Тестовий підрозділ" \
+     -e BOOTSTRAP_USER_ROLES=admin,soldier,commander,medic_psych \
+     backend python -m scripts.seed
+   ```
+
+### Recurring deploy
+
+```bash
+./scripts/deploy.sh
+```
+
+`deploy.sh` pulls main, rebuilds backend + frontend images, runs alembic
+migrations against the running postgres container, and recreates only the app
+containers — postgres stays up across deploys.
+
+### Backups
+
+Daily `pg_dump` via cron (root):
+
+```cron
+15 3 * * * root /opt/lusterko_mvp/scripts/backup_db.sh >> /var/log/lusterko-backup.log 2>&1
+```
+
+Backups live under `/var/backups/lusterko/` (override with `BACKUP_DIR`).
+Retention defaults to 14 days (`RETENTION_DAYS`).
+
+### Sanity check
+
+`make prod-build` runs `docker compose -f infra/docker-compose.prod.yml build`
+locally — useful in CI or before a release to catch broken Dockerfiles.

@@ -21,6 +21,7 @@ real OAuth login is bypassed by directly seeding the User rows.
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -441,6 +442,17 @@ def main(argv: list[str] | None = None) -> int:
         help="Delete existing demo users + units before seeding.",
     )
     args = parser.parse_args(argv)
+
+    # TASK-6304 — never let demo seed accidentally run against the prod DB.
+    # Explicit opt-out (FORCE=1) exists only so a developer pointing local
+    # tooling at a misconfigured env can override after reading this guard.
+    if os.environ.get("APP_ENV") == "production" and os.environ.get("FORCE") != "1":
+        print(
+            "Refusing to run demo seed with APP_ENV=production. "
+            "Set FORCE=1 to override (don't, unless you really mean it).",
+            file=sys.stderr,
+        )
+        return 2
 
     with SessionLocal() as db:
         if args.reset:

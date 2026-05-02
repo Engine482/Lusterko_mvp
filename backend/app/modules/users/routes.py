@@ -13,13 +13,16 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.orm import Session
 
 from app.core.api_response import error_response, success_response
+from app.core.config import get_settings
 from app.modules.auth import service as auth_service
 from app.modules.auth.dependencies import (
     SessionContext,
     get_db,
     require_role,
 )
+from app.modules.notifications import mailer as mailer_mod
 from app.modules.users import service as users_service
+from app.services.audit_logger import log_event
 from app.schemas.admin import (
     AuditLogItem,
     AuditLogsListResponse,
@@ -192,6 +195,30 @@ def issue_invite(
         return error_response("CONFLICT", "User is not active.")
     issued = auth_service.issue_invite(
         db, user_id=user.id, created_by_user_id=ctx.user.id
+    )
+
+    # TASK-6403 — best-effort delivery. The token in the response is the
+    # source of truth; mail is just convenience. Failures are audited but do
+    # not roll back the invite.
+    invite_url = mailer_mod.build_invite_url(
+        get_settings().app_public_base_url, issued.token
+    )
+    result = mailer_mod.get_mailer().send_invite(
+        mailer_mod.InviteEmail(
+            to_email=user.email,
+            to_full_name=user.full_name,
+            invite_url=invite_url,
+            expires_at_iso=issued.invite.expires_at.isoformat(),
+        )
+    )
+    log_event(
+        db,
+        event_type="invite_email_sent" if result.ok else "invite_email_failed",
+        actor_user_id=ctx.user.id,
+        target_user_id=user.id,
+        entity_type="auth_invites",
+        entity_id=issued.invite.id,
+        metadata={"error": result.error} if result.error else None,
     )
     db.commit()
     return success_response(

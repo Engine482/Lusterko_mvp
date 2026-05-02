@@ -23,7 +23,6 @@ DEFAULT_TEST_URL = "postgresql://lusterko:change_me@localhost:5432/lusterko_test
 # `app.core.config` reads env at import time, so set it before app imports.
 os.environ.setdefault("APP_ENV", "test")
 os.environ.setdefault("DATABASE_URL", os.environ.get("TEST_DATABASE_URL", DEFAULT_TEST_URL))
-os.environ.setdefault("SESSION_SECRET", "test-secret")
 # Force OAuth dev-stub regardless of host config.
 os.environ["GOOGLE_CLIENT_ID"] = ""
 os.environ["GOOGLE_CLIENT_SECRET"] = ""

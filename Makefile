@@ -1,4 +1,4 @@
-.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-test-up db-migrate db-revision seed seed-demo mcp-list
+.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-test-up db-migrate db-revision seed seed-demo mcp-list prod-build
 
 setup: setup-backend setup-frontend
 
@@ -49,3 +49,8 @@ seed-demo:
 
 mcp-list:
 	claude mcp list
+
+# TASK-6601 — sanity build of prod images. Verifies Dockerfiles still parse
+# and resolve their dependency trees. No env file required for `build`.
+prod-build:
+	docker compose -f infra/docker-compose.prod.yml build backend frontend
