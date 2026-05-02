@@ -49,7 +49,9 @@ USER lusterko
 EXPOSE 8000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD curl -fsS http://127.0.0.1:8000/api/v1/health || exit 1
+  CMD curl -fsS "http://127.0.0.1:${PORT:-8000}/api/v1/health" || exit 1
 
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", \
-     "--proxy-headers", "--forwarded-allow-ips", "*"]
+# Railway (and most PaaS) inject $PORT and expect the service to bind to it.
+# Local docker-compose.prod.yml does not set PORT, so we default to 8000.
+# `exec` ensures uvicorn becomes PID 1 so SIGTERM propagates for clean shutdown.
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000} --proxy-headers --forwarded-allow-ips '*'"]

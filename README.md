@@ -98,6 +98,17 @@ Set `GITHUB_MCP_PAT` and `LUSTERKO_DATABASE_URL` in your shell or local `.env` b
 
 ## Production deployment
 
+> **Status (2026-05-02):** the pilot deploy lives on **Railway** (managed PaaS).
+> Each service (postgres, backend, frontend) is a Railway service in a single
+> project; backend is reachable at `api.lusterko.motornyi.com`, frontend at
+> `lusterko.motornyi.com`. Custom domains and TLS are managed by Railway.
+> Migrations run as the backend service's pre-deploy command
+> (`alembic upgrade head`).
+>
+> The runbook below describes the **fallback** single-host (VPS or Mac mini)
+> path using `infra/docker-compose.prod.yml` + nginx. We keep it in case the
+> project ever moves off managed PaaS.
+
 Pilot target: a single VPS at `lusterko.motornyi.com`. The production stack is
 `infra/docker-compose.prod.yml` (postgres + backend + frontend) fronted by
 host-level nginx + Let's Encrypt.

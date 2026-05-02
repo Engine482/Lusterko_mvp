@@ -43,6 +43,8 @@ USER lusterko
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://127.0.0.1:3000/ >/dev/null 2>&1 || exit 1
+  CMD wget -qO- "http://127.0.0.1:${PORT:-3000}/" >/dev/null 2>&1 || exit 1
 
-CMD ["pnpm", "start", "--port", "3000"]
+# `next start` reads $PORT. Locally we set ENV PORT=3000 above; Railway and
+# similar PaaS override it with their assigned port.
+CMD ["pnpm", "start"]

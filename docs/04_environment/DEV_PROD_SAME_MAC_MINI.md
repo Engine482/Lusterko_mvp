@@ -1,5 +1,12 @@
 # Dev and Future Deploy on the Same Mac mini
 
+> **Status (2026-05-02):** the pilot deploy moved off this machine to **Railway**
+> (managed PaaS). The Mac is now purely a development host. The guidance below
+> applies only if the project ever migrates back to single-host deployment on
+> the dev Mac (or any other machine that runs both dev and prod). Production
+> Docker images, `infra/docker-compose.prod.yml`, `infra/nginx/lusterko.conf`,
+> `scripts/deploy.sh`, and `.env.production.example` are kept for that scenario.
+
 This repo is prepared on a Mac mini that currently acts as the development host and may temporarily host the first deploy. Keep dev and deploy separated even when they share the machine.
 
 ## Recommended Layout
