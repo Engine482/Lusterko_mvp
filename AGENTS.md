@@ -31,7 +31,7 @@
 
 P0 MVP включає тільки:
 - invite-based auth
-- Google OAuth
+- email + password (argon2id; Sprint 7 Auth Pivot, see `docs/06_decisions/2026-05-02-auth-email-password.md`)
 - role selection + role switching
 - soldier baseline / daily / weekly / cognitive
 - AI text parsing лише для optional comment

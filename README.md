@@ -121,23 +121,22 @@ host-level nginx + Let's Encrypt.
 3. **Repo.** `git clone` this repo into `/opt/lusterko_mvp` (path is just a
    convention; `scripts/deploy.sh` runs from the repo root).
 4. **Env file.** Copy `.env.production.example` → `.env.production` and fill
-   in real secrets (`POSTGRES_PASSWORD`, `DATABASE_URL`, Google OAuth client,
-   SMTP credentials). Never commit this file.
-5. **Google OAuth.** Create a real OAuth client in Google Cloud Console; set
-   the authorized redirect URI to
-   `https://lusterko.motornyi.com/api/v1/auth/google/callback` and put its
-   client id/secret into `.env.production`.
-6. **Nginx vhost.** Copy `infra/nginx/lusterko.conf` to
+   in real secrets (`POSTGRES_PASSWORD`, `DATABASE_URL`, SMTP credentials).
+   Never commit this file.
+5. **Nginx vhost.** Copy `infra/nginx/lusterko.conf` to
    `/etc/nginx/sites-available/lusterko.conf`, symlink to
    `/etc/nginx/sites-enabled/`, and `nginx -t && systemctl reload nginx`.
-7. **TLS.** First-time certificate:
+6. **TLS.** First-time certificate:
    ```bash
    certbot --nginx -d lusterko.motornyi.com
    ```
    Certbot installs its own systemd timer; renewals are automatic. The vhost
    serves `/.well-known/acme-challenge/` from `/var/www/certbot` for renewals.
-8. **Bootstrap admin.** Bring postgres up, migrate, and seed the pilot admin
-   with all roles:
+7. **Bootstrap admin.** Bring postgres up, migrate, and seed the pilot admin
+   with all roles. Two modes:
+   - **Password mode** (recommended for prod): set `BOOTSTRAP_ADMIN_PASSWORD`
+     to a strong value (≥12 chars) — admin is created with the hash directly,
+     no email/invite step needed:
    ```bash
    docker compose --env-file .env.production -f infra/docker-compose.prod.yml up -d postgres
    docker compose --env-file .env.production -f infra/docker-compose.prod.yml run --rm \
@@ -145,7 +144,13 @@ host-level nginx + Let's Encrypt.
      -e ADMIN_FULL_NAME="Motorny V." \
      -e SEED_UNIT_NAME="Тестовий підрозділ" \
      -e BOOTSTRAP_USER_ROLES=admin,soldier,commander,medic_psych \
+     -e BOOTSTRAP_ADMIN_PASSWORD='paste-strong-password-here' \
      backend python -m scripts.seed
+   ```
+   - **Invite mode** (default — when `BOOTSTRAP_ADMIN_PASSWORD` unset): admin
+     is created with `password_hash = NULL` and a fresh first-login invite is
+     printed; admin clicks the link and sets their own password via
+     `/invite?token=…`. Same command without that env var.
    ```
 
 ### Recurring deploy

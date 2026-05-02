@@ -1,16 +1,25 @@
-"""Bootstrap seed: minimal unit + admin user + first-login invite.
+"""Bootstrap seed: minimal unit + admin user + (optional) password or invite.
 
-Idempotent. Run after `make db-migrate`. Used in Sprint 1 (Backlog TASK-0601)
-to give the demo a starting admin account, and in Sprint 6 (TASK-6501..6502)
-to bootstrap the pilot admin with multiple roles.
+Idempotent. Run after `make db-migrate`.
+
+Two modes, picked by env:
+
+- **BOOTSTRAP_ADMIN_PASSWORD set** — admin gets the password set directly
+  (argon2id-hashed). No invite is issued. Use for prod bootstrap when you
+  control the password and want to log in immediately. The variable must
+  satisfy the length policy (>=12 chars) — the seed will refuse otherwise.
+- **BOOTSTRAP_ADMIN_PASSWORD unset** — admin row is created with password_hash
+  NULL and a fresh first-login invite is issued. The token is printed; admin
+  follows the invite flow to set their password via the UI.
 
 Usage:
     DATABASE_URL=... ADMIN_EMAIL=admin@example.com python -m scripts.seed
 
-    # Pilot bootstrap with a multi-role admin:
+    # Pilot bootstrap with a multi-role admin and a known password:
     DATABASE_URL=... \
     ADMIN_EMAIL=motorny.v@gmail.com \
     BOOTSTRAP_USER_ROLES=admin,soldier,commander,medic_psych \
+    BOOTSTRAP_ADMIN_PASSWORD='paste-strong-password-here' \
     SEED_UNIT_NAME="Тестовий підрозділ" \
     python -m scripts.seed
 """
@@ -25,6 +34,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from app.core.constants import Role
+from app.core.security import PasswordPolicyError, hash_password
 from app.db.session import SessionLocal
 from app.models.unit import Unit
 from app.models.user import User
@@ -62,6 +72,16 @@ def main() -> int:
     unit_name = os.environ.get("SEED_UNIT_NAME", "Демо підрозділ")
     raw_roles = os.environ.get("BOOTSTRAP_USER_ROLES", "admin")
     desired_roles = _parse_roles(raw_roles)
+    bootstrap_password = os.environ.get("BOOTSTRAP_ADMIN_PASSWORD")
+
+    # Validate password early (before any DB writes) so the user gets a
+    # clean error message and the script stays idempotent.
+    password_hash_value: str | None = None
+    if bootstrap_password:
+        try:
+            password_hash_value = hash_password(bootstrap_password)
+        except PasswordPolicyError as err:
+            raise SystemExit(f"BOOTSTRAP_ADMIN_PASSWORD invalid: {err}") from err
 
     with SessionLocal() as db:
         unit = db.execute(select(Unit).where(Unit.name == unit_name)).scalar_one_or_none()
@@ -90,8 +110,22 @@ def main() -> int:
             if role not in existing_roles:
                 db.add(UserRole(user_id=admin.id, role=role))
 
-        # Create a fresh invite for first login (system-actor: None).
-        issued = auth_service.issue_invite(db, user_id=admin.id, created_by_user_id=None)
+        issued_token: str | None = None
+        invite_expires_iso: str | None = None
+        if password_hash_value is not None:
+            # Password mode: set hash, no invite. Re-runs overwrite the
+            # hash so an operator can rotate by re-running with a new
+            # BOOTSTRAP_ADMIN_PASSWORD.
+            admin.password_hash = password_hash_value
+        else:
+            # Invite mode: create a fresh first-login invite. Existing
+            # pending invites for the same user are revoked by the service.
+            issued = auth_service.issue_invite(
+                db, user_id=admin.id, created_by_user_id=None
+            )
+            issued_token = issued.token
+            invite_expires_iso = issued.invite.expires_at.isoformat()
+
         db.commit()
 
         print("Seed OK:")
@@ -99,8 +133,11 @@ def main() -> int:
         print(f"  admin_id    = {admin.id}")
         print(f"  admin_email = {admin.email}")
         print(f"  roles       = {','.join(desired_roles)}")
-        print(f"  invite_token = {issued.token}")
-        print(f"  invite_expires_at = {issued.invite.expires_at.isoformat()}")
+        if password_hash_value is not None:
+            print("  bootstrap_mode = password (hash set; no invite issued)")
+        else:
+            print(f"  invite_token = {issued_token}")
+            print(f"  invite_expires_at = {invite_expires_iso}")
     return 0
 
 

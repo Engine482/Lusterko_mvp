@@ -21,10 +21,12 @@
 
 ## 3. Глобальна структура екранів P0
 ### Shared / Auth
-1. Invite Landing Screen
-2. OAuth Redirect / Callback State
-3. Role Selection Screen
-4. Global Role Switcher
+1. Login Screen
+2. Invite Landing Screen (set initial password)
+3. Forgot Password Screen
+4. Reset Password Screen
+5. Role Selection Screen
+6. Global Role Switcher
 
 ### Soldier
 5. Soldier Home
@@ -61,23 +63,63 @@
 30. Audit Log Screen
 
 ## 4. Shared / Auth wireframes
-### 4.1 Invite Landing Screen
+
+> **Sprint 7 update:** Wireframes oновлено під email+password флоу
+> (`docs/06_decisions/2026-05-02-auth-email-password.md`). Google OAuth
+> сторінки прибрано.
+
+### 4.1 Login Screen
 Layout:
-- Header: логотип / назва “Люстерко”
-- Main block: короткий текст, email, строк дії інвайту, CTA `Увійти через Google`
-- Secondary block: коротке пояснення безпеки
+- Header: логотип / назва "Люстерко"
+- Form: `email`, `password`, CTA `Увійти`
+- Link: `Забули пароль?`
+
+States:
+- `idle`
+- `submitting`
+- `error: UNAUTHORIZED` — generic "невірний email або пароль"
+- `error: ACCOUNT_LOCKED` — повідомлення з retry-after; не розкриває чи акаунт реальний
+
+### 4.2 Invite Landing Screen
+Layout:
+- Header: логотип
+- Main block: короткий текст про встановлення паролю
+- Form fields:
+  - `token` (prefilled з URL, read-only або редагований)
+  - `full_name` (editable, prefilled з admin-input)
+  - `password` (min 12 chars)
+  - `confirm password`
+- CTA `Встановити пароль і увійти`
 
 States:
 - `valid invite`
-- `invalid invite`
-- `expired invite`
+- `error: INVALID_INVITE`
+- `error: INVITE_EXPIRED`
+- `error: WEAK_PASSWORD`
+- `error: ACCOUNT_LOCKED`
 
-### 4.2 OAuth Callback / Redirect State
-- loader
-- текст “Завершуємо вхід…”
-- error state з CTA `Спробувати ще раз`
+### 4.3 Forgot Password Screen
+Layout:
+- Form: `email`, CTA `Надіслати посилання`
+- Link: `Назад до входу`
 
-### 4.3 Role Selection Screen
+After-submit state (always identical, незалежно від існування акаунту):
+- "Якщо введена адреса зареєстрована в Lusterko — на неї надійде лист
+  із посиланням для скидання паролю. Посилання дійсне 1 годину."
+
+### 4.4 Reset Password Screen
+Layout:
+- Form: `token` (prefilled з URL), `new password`, `confirm`, CTA `Зберегти пароль`
+
+States:
+- `idle`
+- `submitting`
+- `error: INVALID_RESET_TOKEN` / `RESET_TOKEN_EXPIRED` / `WEAK_PASSWORD`
+
+Після успішного збереження — користувач залогінений автоматично, всі
+попередні сесії припинені.
+
+### 4.5 Role Selection Screen
 Role cards:
 - Військовослужбовець
 - Командир
@@ -86,7 +128,7 @@ Role cards:
 
 Кожна картка містить назву ролі, короткий опис і CTA `Увійти як ...`.
 
-### 4.4 Global Role Switcher
+### 4.6 Global Role Switcher
 - показує поточну active role
 - відкриває список доступних ролей
 - після switch очищається role-scoped cache і йде redirect на role home

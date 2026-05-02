@@ -36,6 +36,10 @@
 - `FORBIDDEN`
 - `INVALID_INVITE`
 - `INVITE_EXPIRED`
+- `INVALID_RESET_TOKEN`
+- `RESET_TOKEN_EXPIRED`
+- `WEAK_PASSWORD`
+- `ACCOUNT_LOCKED` (HTTP 429)
 - `ROLE_SELECTION_REQUIRED`
 - `VALIDATION_ERROR`
 - `NOT_FOUND`
@@ -45,6 +49,7 @@
 - `INVALID_ACTIVE_ROLE`
 - `INSUFFICIENT_SCOPE`
 - `AI_PARSE_FAILED`
+- `CASE_INVALID_TRANSITION`
 - `INTERNAL_ERROR`
 
 ## 2. Базові enum-значення
@@ -89,26 +94,84 @@
 ```
 
 ## 3. Auth API
-### 3.1 GET `/api/v1/auth/google/start?invite_token=...`
-Призначення: перевіряє invite token і запускає Google OAuth flow.
+
+> **Sprint 7 Auth Pivot:** This section reflects the email+password auth (see
+> `docs/06_decisions/2026-05-02-auth-email-password.md`). Google OAuth was
+> removed. All auth endpoints below are rate-limited (5 failures / 15 min,
+> soft-lock 5 min with exponential backoff per cycle); the lock surfaces as
+> HTTP 429 + `ACCOUNT_LOCKED` (silently swallowed on `/password/forgot` to
+> preserve anti-enumeration).
+
+### 3.1 POST `/api/v1/auth/login`
+**Request**
+```json
+{ "email": "user@example.com", "password": "..." }
+```
 
 **Response**
 ```json
 {
   "success": true,
-  "data": {
-    "redirect_url": "https://accounts.google.com/..."
-  }
+  "data": { "logged_in": true }
 }
 ```
 
-### 3.2 GET `/api/v1/auth/google/callback?...`
-Backend redirect endpoint.
-- якщо роль одна → на role home
-- якщо ролей кілька → на role selection
-- якщо invite invalid → на auth error screen
+Sets the `lusterko_session` HttpOnly cookie. On wrong creds, missing user, or
+inactive user returns the generic `UNAUTHORIZED` error so the API does not
+leak account existence.
 
-### 3.3 GET `/api/v1/auth/me`
+### 3.2 POST `/api/v1/auth/invite/accept`
+**Request**
+```json
+{
+  "token": "<plaintext-invite-token>",
+  "full_name": "Ім'я Прізвище",
+  "password": "..."
+}
+```
+
+`full_name` is optional — when absent the admin-supplied name is kept.
+On success: sets the password hash, marks the invite consumed, issues a
+session cookie, returns:
+```json
+{ "success": true, "data": { "accepted": true } }
+```
+
+Errors: `INVALID_INVITE`, `INVITE_EXPIRED`, `WEAK_PASSWORD`, `UNAUTHORIZED`
+(inactive user).
+
+### 3.3 POST `/api/v1/auth/password/forgot`
+**Request**
+```json
+{ "email": "user@example.com" }
+```
+
+**Response (always)**
+```json
+{ "success": true, "data": { "queued": true } }
+```
+
+Anti-enumeration: identical envelope regardless of whether the email matched
+a real account. When the email matches an active user, the backend issues a
+password-reset token and best-effort sends the reset email; failures audit
+as `password_reset_email_failed` but do not surface to the caller.
+
+### 3.4 POST `/api/v1/auth/password/reset`
+**Request**
+```json
+{ "token": "<plaintext-reset-token>", "password": "..." }
+```
+
+On success: sets the new password hash, consumes the token, **revokes all
+existing sessions for the user**, issues a fresh session cookie, returns:
+```json
+{ "success": true, "data": { "reset": true } }
+```
+
+Errors: `INVALID_RESET_TOKEN`, `RESET_TOKEN_EXPIRED`, `WEAK_PASSWORD`,
+`UNAUTHORIZED` (inactive user).
+
+### 3.5 GET `/api/v1/auth/me`
 ```json
 {
   "success": true,
@@ -127,7 +190,7 @@ Backend redirect endpoint.
 }
 ```
 
-### 3.4 POST `/api/v1/auth/select-role`
+### 3.6 POST `/api/v1/auth/select-role`
 **Request**
 ```json
 { "role": "commander" }
@@ -141,7 +204,7 @@ Backend redirect endpoint.
 }
 ```
 
-### 3.5 POST `/api/v1/auth/refresh`
+### 3.7 POST `/api/v1/auth/refresh`
 ```json
 {
   "success": true,
@@ -149,7 +212,7 @@ Backend redirect endpoint.
 }
 ```
 
-### 3.6 POST `/api/v1/auth/logout`
+### 3.8 POST `/api/v1/auth/logout`
 ```json
 {
   "success": true,
