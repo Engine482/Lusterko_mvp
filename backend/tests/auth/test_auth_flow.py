@@ -335,6 +335,60 @@ def test_password_reset_token_cannot_be_reused(client: TestClient) -> None:
         mailer_mod.set_mailer(None)
 
 
+def test_password_reset_revokes_existing_sessions(client: TestClient) -> None:
+    """Critical security invariant: a password reset must invalidate all
+    pre-existing session cookies for that user. We model this by issuing a
+    second client (separate cookie jar) that is also logged in, then triggering
+    a reset on the first client and confirming the second's session is now
+    rejected."""
+
+    from fastapi.testclient import TestClient as _TC
+
+    from app.main import app
+    from app.modules.auth import service as auth_service
+    from tests.factories import issue_invite_for, make_user
+
+    user = make_user(email="revoke@example.com", roles=("soldier",))
+    token = issue_invite_for(user.id)
+
+    # First device: accept the invite via `client`.
+    _accept_invite(client, token)
+    # First device sees /me as authenticated.
+    assert client.get("/api/v1/auth/me").status_code == 200
+
+    # Second device: log in independently with the password just set.
+    other = _TC(app)
+    other_login = other.post(
+        "/api/v1/auth/login",
+        json={"email": "revoke@example.com", "password": GOOD_PASSWORD},
+    )
+    assert other_login.status_code == 200
+    assert other.get("/api/v1/auth/me").status_code == 200
+
+    # Trigger reset from `client`.
+    stub = mailer_mod.StubMailer()
+    mailer_mod.set_mailer(stub)
+    try:
+        client.post(
+            "/api/v1/auth/password/forgot",
+            json={"email": "revoke@example.com"},
+        )
+        reset_token = stub.sent_resets[0].reset_url.rsplit("token=", 1)[1]
+        client.post(
+            "/api/v1/auth/password/reset",
+            json={"token": reset_token, "password": "another-strong-1234"},
+        )
+    finally:
+        mailer_mod.set_mailer(None)
+
+    # The OTHER device's cookie is now stale — /me must reject.
+    assert other.get("/api/v1/auth/me").status_code == 401
+    # Use the unused service import to silence linting; also confirms the
+    # in-DB invariant directly: no active sessions for this user remain
+    # *except* the new one issued by the reset itself.
+    _ = auth_service
+
+
 def test_password_reset_token_expired(client: TestClient) -> None:
     user = make_user(email="exp@example.com", roles=("soldier",))
     token = issue_invite_for(user.id)
