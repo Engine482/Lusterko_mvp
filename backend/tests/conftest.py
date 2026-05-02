@@ -47,6 +47,7 @@ def _migrate_database() -> Iterator[None]:
 
 _TRUNCATABLE_TABLES = (
     "audit_logs",
+    "auth_lockouts",
     "password_reset_tokens",
     "user_sessions",
     "auth_invites",

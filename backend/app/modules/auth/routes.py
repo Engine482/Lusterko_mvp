@@ -23,6 +23,7 @@ from sqlalchemy.orm import Session
 from app.core.api_response import error_response, success_response
 from app.core.config import get_settings
 from app.core.cookies import clear_session_cookie, set_session_cookie
+from app.modules.auth import rate_limit as rl
 from app.modules.auth import service as auth_service
 from app.modules.auth.dependencies import (
     SessionContext,
@@ -73,27 +74,33 @@ def login(
     request: Request,
     db: Session = Depends(get_db),
 ) -> Response:
+    ip = _client_ip(request)
+    key = rl.login_key(ip=ip, email=payload.email)
     try:
+        rl.check_lockout(db, key=key)
         user = auth_service.authenticate(
             db,
             email=payload.email,
             password=payload.password,
         )
     except auth_service.AuthError as err:
+        if err.code != "ACCOUNT_LOCKED":
+            rl.record_failure(db, key=key, ip_address=ip)
         log_event(
             db,
             event_type="login_failed",
             metadata={"email": payload.email, "reason": err.code},
-            ip_address=_client_ip(request),
+            ip_address=ip,
         )
         db.commit()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
 
+    rl.record_success(db, key=key)
     try:
         issued = auth_service.create_session(
             db,
             user=user,
-            ip_address=_client_ip(request),
+            ip_address=ip,
             user_agent=request.headers.get("user-agent"),
         )
     except auth_service.AuthError as err:
@@ -112,7 +119,10 @@ def invite_accept(
     request: Request,
     db: Session = Depends(get_db),
 ) -> Response:
+    ip = _client_ip(request)
+    key = rl.invite_accept_key(ip=ip)
     try:
+        rl.check_lockout(db, key=key)
         user = auth_service.accept_invite(
             db,
             token=payload.token,
@@ -120,20 +130,24 @@ def invite_accept(
             password=payload.password,
         )
     except auth_service.AuthError as err:
+        # WEAK_PASSWORD is a UX hint, not a brute-force signal — don't count it.
+        if err.code not in ("ACCOUNT_LOCKED", "WEAK_PASSWORD"):
+            rl.record_failure(db, key=key, ip_address=ip)
         log_event(
             db,
             event_type="login_failed",
             metadata={"reason": err.code},
-            ip_address=_client_ip(request),
+            ip_address=ip,
         )
         db.commit()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
 
+    rl.record_success(db, key=key)
     try:
         issued = auth_service.create_session(
             db,
             user=user,
-            ip_address=_client_ip(request),
+            ip_address=ip,
             user_agent=request.headers.get("user-agent"),
         )
     except auth_service.AuthError as err:
@@ -152,11 +166,30 @@ def invite_accept(
 @router.post("/password/forgot")
 def password_forgot(
     payload: PasswordForgotRequest,
+    request: Request,
     db: Session = Depends(get_db),
 ) -> Response:
     """Anti-enumeration: same response shape whether the email matched or
     not. We do all real work inside the conditional so a missing email
-    costs ~zero and timing differences stay below the noise floor."""
+    costs ~zero and timing differences stay below the noise floor.
+
+    Rate-limited per (IP, email) to prevent reset-spam: 5/15min then a
+    backoff lock. The lockout response intentionally still returns the
+    generic envelope shape so it does not leak account existence."""
+
+    ip = _client_ip(request)
+    key = rl.password_forgot_key(ip=ip, email=payload.email)
+    try:
+        rl.check_lockout(db, key=key)
+    except auth_service.AuthError:
+        # Swallow lockout into the generic success envelope — anti-
+        # enumeration trumps "tell user to slow down" here.
+        db.commit()
+        return success_response(PasswordForgotResponse(queued=True).model_dump())
+
+    # Every call counts toward the rate-limit (success or not), so this
+    # endpoint can't be used as a free-fire reset spammer.
+    rl.record_failure(db, key=key, ip_address=ip)
 
     user = db.execute(
         select(User).where(User.email == payload.email.lower().strip())
@@ -196,7 +229,10 @@ def password_reset(
     request: Request,
     db: Session = Depends(get_db),
 ) -> Response:
+    ip = _client_ip(request)
+    key = rl.password_reset_key(ip=ip)
     try:
+        rl.check_lockout(db, key=key)
         reset_row = auth_service.validate_password_reset_token(db, token=payload.token)
         user = auth_service.consume_password_reset(
             db,
@@ -204,14 +240,17 @@ def password_reset(
             new_password=payload.password,
         )
     except auth_service.AuthError as err:
+        if err.code not in ("ACCOUNT_LOCKED", "WEAK_PASSWORD"):
+            rl.record_failure(db, key=key, ip_address=ip)
         db.commit()
         return error_response(err.code, err.message)  # type: ignore[arg-type]
 
+    rl.record_success(db, key=key)
     try:
         issued = auth_service.create_session(
             db,
             user=user,
-            ip_address=_client_ip(request),
+            ip_address=ip,
             user_agent=request.headers.get("user-agent"),
         )
     except auth_service.AuthError as err:

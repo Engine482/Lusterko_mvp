@@ -6,6 +6,7 @@ tables land in later sprints (Backlog TASK-2001+, TASK-3001+, TASK-4001+, TASK-5
 
 from app.models.audit_log import AuditLog
 from app.models.auth_invite import AuthInvite
+from app.models.auth_lockout import AuthLockout
 from app.models.baseline_event import BaselineEvent
 from app.models.baseline_profile import BaselineProfile
 from app.models.case_review import CaseReview
@@ -28,6 +29,7 @@ from app.models.weekly_pss4 import WeeklyPss4Assessment
 __all__ = [
     "AuditLog",
     "AuthInvite",
+    "AuthLockout",
     "BaselineEvent",
     "BaselineProfile",
     "CaseReview",
