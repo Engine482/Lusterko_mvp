@@ -10,6 +10,12 @@ RUN corepack enable && corepack prepare pnpm@11.0.3 --activate
 
 WORKDIR /app
 
+# NEXT_PUBLIC_* values are baked into the client bundle by `next build`, so
+# they have to be present at build time. Render passes Build Env Vars whose
+# names match declared ARGs.
+ARG NEXT_PUBLIC_API_BASE_URL=""
+ENV NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}
+
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
