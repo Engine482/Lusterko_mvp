@@ -13,6 +13,7 @@ from app.models.case_review_note import CaseReviewNote
 from app.models.comment_ai_analysis import CommentAiAnalysis
 from app.models.daily_checkin import DailyCheckin
 from app.models.go_no_go_test import GoNoGoTest
+from app.models.password_reset_token import PasswordResetToken
 from app.models.reaction_test import ReactionTest
 from app.models.risk_event import RiskEvent
 from app.models.risk_rule_hit import RiskRuleHit
@@ -35,6 +36,7 @@ __all__ = [
     "CommentAiAnalysis",
     "DailyCheckin",
     "GoNoGoTest",
+    "PasswordResetToken",
     "ReactionTest",
     "RiskEvent",
     "RiskRuleHit",
