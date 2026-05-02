@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { authApi } from "@/lib/api/auth";
 import { describeError } from "@/lib/api/utils";
@@ -9,19 +9,21 @@ import { describeError } from "@/lib/api/utils";
 // password (and optionally fixes their full name), and ends up logged in.
 const MIN_PASSWORD = 12;
 
+function readTokenFromUrl(): string {
+  if (typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  return (
+    url.searchParams.get("token") ?? url.searchParams.get("invite_token") ?? ""
+  );
+}
+
 export default function InviteLandingPage() {
-  const [token, setToken] = useState<string>("");
+  const [token, setToken] = useState<string>(readTokenFromUrl);
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const t = url.searchParams.get("token") ?? url.searchParams.get("invite_token");
-    if (t) setToken(t);
-  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -80,7 +82,7 @@ export default function InviteLandingPage() {
           />
         </label>
         <label>
-          Повне ім'я
+          Повне ім&apos;я
           <input
             type="text"
             value={fullName}

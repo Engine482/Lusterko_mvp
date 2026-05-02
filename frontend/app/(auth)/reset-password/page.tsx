@@ -1,26 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { authApi } from "@/lib/api/auth";
 import { describeError } from "@/lib/api/utils";
 
 const MIN_PASSWORD = 12;
 
+function readTokenFromUrl(): string {
+  if (typeof window === "undefined") return "";
+  const url = new URL(window.location.href);
+  return url.searchParams.get("token") ?? "";
+}
+
 // Sprint 7 — Reset Password screen. Token comes in from the email link;
 // successful submit logs the user in and redirects to their role home.
 export default function ResetPasswordPage() {
-  const [token, setToken] = useState("");
+  const [token, setToken] = useState<string>(readTokenFromUrl);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const url = new URL(window.location.href);
-    const t = url.searchParams.get("token");
-    if (t) setToken(t);
-  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
