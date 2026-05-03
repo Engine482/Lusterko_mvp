@@ -4,14 +4,8 @@ import { useEffect, useState } from "react";
 
 import { authApi, type AuthMe } from "@/lib/api/auth";
 import { humanError } from "@/lib/api/messages";
+import { ROLE_LABEL } from "@/lib/labels";
 import type { Role } from "@/types/enums";
-
-const ROLE_LABELS: Record<Role, string> = {
-  soldier: "Військовослужбовець",
-  commander: "Командир",
-  medic_psych: "Медик / психолог",
-  admin: "Адміністратор",
-};
 
 const HOME_PATH: Record<Role, string> = {
   soldier: "/soldier",
@@ -38,7 +32,7 @@ export function RoleSwitcher() {
   if (me.roles.length <= 1) {
     return (
       <span className="role-switcher__static">
-        {me.active_role ? ROLE_LABELS[me.active_role] : "—"}
+        {me.active_role ? ROLE_LABEL[me.active_role] : "—"}
       </span>
     );
   }
@@ -57,16 +51,19 @@ export function RoleSwitcher() {
       <button
         type="button"
         className="role-switcher__current"
+        aria-label="Перемкнути активну роль"
+        aria-haspopup="menu"
+        aria-expanded={open}
         onClick={() => setOpen((value) => !value)}
       >
-        {me.active_role ? ROLE_LABELS[me.active_role] : "Оберіть роль"} ▾
+        {me.active_role ? ROLE_LABEL[me.active_role] : "Оберіть роль"} ▾
       </button>
       {open && (
-        <ul className="role-switcher__menu">
+        <ul className="role-switcher__menu" role="menu">
           {me.roles.map((role) => (
-            <li key={role}>
-              <button type="button" onClick={() => switchRole(role)}>
-                {ROLE_LABELS[role]}
+            <li key={role} role="none">
+              <button type="button" role="menuitem" onClick={() => switchRole(role)}>
+                {ROLE_LABEL[role]}
               </button>
             </li>
           ))}

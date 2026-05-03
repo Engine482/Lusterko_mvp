@@ -5,7 +5,13 @@ import { useEffect, useState } from "react";
 
 import { adminApi, type AdminUser } from "@/lib/api/admin";
 import { humanError } from "@/lib/api/messages";
+import { ROLE_LABEL } from "@/lib/labels";
 import type { Role, UserStatus } from "@/types/enums";
+
+const STATUS_LABEL: Record<UserStatus, string> = {
+  active: "Активний",
+  inactive: "Деактивований",
+};
 
 const ROLES: Role[] = ["soldier", "commander", "medic_psych", "admin"];
 const STATUSES: UserStatus[] = ["active", "inactive"];
@@ -50,18 +56,19 @@ export default function AdminUsersPage() {
           <option value="">Усі статуси</option>
           {STATUSES.map((s) => (
             <option key={s} value={s}>
-              {s}
+              {STATUS_LABEL[s]}
             </option>
           ))}
         </select>
         <select
           value={filterRole}
           onChange={(e) => setFilterRole(e.target.value as Role | "")}
+          aria-label="Фільтр за роллю"
         >
           <option value="">Усі ролі</option>
           {ROLES.map((r) => (
             <option key={r} value={r}>
-              {r}
+              {ROLE_LABEL[r]}
             </option>
           ))}
         </select>
@@ -86,8 +93,8 @@ export default function AdminUsersPage() {
               <tr key={u.id}>
                 <td>{u.full_name}</td>
                 <td>{u.email}</td>
-                <td>{u.roles.join(", ")}</td>
-                <td>{u.status}</td>
+                <td>{u.roles.map((r) => ROLE_LABEL[r]).join(", ")}</td>
+                <td>{STATUS_LABEL[u.status]}</td>
                 <td>
                   <Link href={`/admin/users/${u.id}`}>Відкрити</Link>
                 </td>

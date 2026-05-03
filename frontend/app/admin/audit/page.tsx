@@ -28,10 +28,11 @@ export default function AdminAuditPage() {
 
   return (
     <section>
-      <h1>Audit log</h1>
+      <h1>Журнал подій</h1>
       <div style={{ marginBottom: 12 }}>
         <input
-          placeholder="Фільтр за event_type"
+          placeholder="Фільтр за типом події"
+          aria-label="Фільтр за типом події"
           value={eventType}
           onChange={(e) => setEventType(e.target.value)}
         />

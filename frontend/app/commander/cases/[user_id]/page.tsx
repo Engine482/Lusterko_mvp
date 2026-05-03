@@ -8,14 +8,7 @@ import {
   type CommanderCaseCard,
 } from "@/lib/api/commander";
 import { humanError } from "@/lib/api/messages";
-import type { RiskStatus } from "@/types/enums";
-
-const STATUS_LABEL: Record<RiskStatus, string> = {
-  green: "Green",
-  yellow: "Yellow",
-  red: "Red",
-  insufficient_data: "Недостатньо даних",
-};
+import { RISK_LABEL as STATUS_LABEL } from "@/lib/labels";
 
 // Wireframes P0 §6.3 — Commander Case Card. Field policy enforced server-side
 // per RBAC §6.2 — this UI only renders what the API returns.

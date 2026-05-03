@@ -5,22 +5,9 @@ import { useEffect, useState } from "react";
 
 import { medicApi, type MedicCaseRow } from "@/lib/api/medic";
 import { humanError } from "@/lib/api/messages";
+import { CASE_STATUS_LABEL, RISK_LABEL } from "@/lib/labels";
 import { EmptyState, LoadingState } from "@/components/UiState";
 import type { CaseStatus, RiskStatus } from "@/types/enums";
-
-const RISK_LABEL: Record<RiskStatus, string> = {
-  green: "Green",
-  yellow: "Yellow",
-  red: "Red",
-  insufficient_data: "Недостатньо даних",
-};
-
-const CASE_LABEL: Record<CaseStatus, string> = {
-  new: "Нове",
-  in_review: "У роботі",
-  monitoring: "Моніторинг",
-  closed: "Закрите",
-};
 
 type RiskFilter = RiskStatus | "all";
 type CaseFilter = CaseStatus | "open";
@@ -57,7 +44,7 @@ export default function MedicCasesListPage() {
 
   return (
     <section>
-      <h1>Medic — Priority Cases</h1>
+      <h1>Пріоритетні кейси</h1>
       <div className="stack" style={{ marginBottom: 16 }}>
         <div className="row">
           <span className="text-muted" style={{ alignSelf: "center" }}>Ризик:</span>
@@ -83,7 +70,7 @@ export default function MedicCasesListPage() {
               aria-pressed={caseFilter === f}
               onClick={() => setCaseFilter(f)}
             >
-              {f === "open" ? "Відкриті" : CASE_LABEL[f]}
+              {f === "open" ? "Відкриті" : CASE_STATUS_LABEL[f]}
             </button>
           ))}
         </div>
@@ -105,7 +92,7 @@ export default function MedicCasesListPage() {
                 <span>{RISK_LABEL[c.current_risk_status]}</span>
               </div>
               <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
-                Статус кейсу: {CASE_LABEL[c.case_status]} · відкрито {new Date(c.opened_at).toLocaleString("uk-UA")}
+                Статус кейсу: {CASE_STATUS_LABEL[c.case_status]} · відкрито {new Date(c.opened_at).toLocaleString("uk-UA")}
               </div>
               <Link
                 style={{ marginTop: 8, display: "inline-block" }}

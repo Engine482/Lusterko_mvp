@@ -9,15 +9,11 @@ import {
   type CommanderSummary,
 } from "@/lib/api/commander";
 import { humanError } from "@/lib/api/messages";
+import { RISK_LABEL } from "@/lib/labels";
 import { EmptyState, LoadingState } from "@/components/UiState";
 import type { RiskStatus } from "@/types/enums";
 
-const STATUS_LABEL: Record<RiskStatus, string> = {
-  green: "Green",
-  yellow: "Yellow",
-  red: "Red",
-  insufficient_data: "Недостатньо даних",
-};
+const STATUS_LABEL = RISK_LABEL;
 
 const STATUS_BG: Record<RiskStatus, string> = {
   red: "var(--risk-red)",
@@ -61,7 +57,7 @@ export default function CommanderDashboardPage() {
 
   return (
     <section>
-      <h1>Commander Dashboard</h1>
+      <h1>Дашборд командира</h1>
       {summary.unit_id === null && (
         <div className="alert alert--info">
           Вашому акаунту не призначено підрозділ. Зверніться до адміна.

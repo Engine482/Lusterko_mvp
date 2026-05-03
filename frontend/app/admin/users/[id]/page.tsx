@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { adminApi, type AdminUser, type IssuedInvite } from "@/lib/api/admin";
 import { humanError } from "@/lib/api/messages";
+import { ROLE_LABEL } from "@/lib/labels";
 import type { Role } from "@/types/enums";
 
 const ALL_ROLES: Role[] = ["soldier", "commander", "medic_psych", "admin"];
@@ -92,7 +93,7 @@ export default function AdminUserProfilePage({ params }: Props) {
               checked={roles.includes(role)}
               onChange={() => toggleRole(role)}
             />{" "}
-            {role}
+            {ROLE_LABEL[role]}
           </label>
         ))}
       </div>

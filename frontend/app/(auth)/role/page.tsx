@@ -4,25 +4,14 @@ import { useEffect, useState } from "react";
 
 import { authApi, type AuthMe } from "@/lib/api/auth";
 import { humanError } from "@/lib/api/messages";
+import { ROLE_LABEL } from "@/lib/labels";
 import type { Role } from "@/types/enums";
 
-const ROLE_COPY: Record<Role, { title: string; description: string }> = {
-  soldier: {
-    title: "Військовослужбовець",
-    description: "Проходити baseline, daily і cognitive перевірки.",
-  },
-  commander: {
-    title: "Командир",
-    description: "Бачити dashboard стану підрозділу і пріоритетні випадки.",
-  },
-  medic_psych: {
-    title: "Медик / психолог",
-    description: "Працювати з ризиковими кейсами і додавати нотатки.",
-  },
-  admin: {
-    title: "Адміністратор",
-    description: "Створювати користувачів, видавати інвайти, керувати ролями.",
-  },
+const ROLE_DESCRIPTION: Record<Role, string> = {
+  soldier: "Проходити baseline, daily і когнітивні перевірки.",
+  commander: "Бачити стан підрозділу і пріоритетні випадки.",
+  medic_psych: "Працювати з ризиковими кейсами і додавати нотатки.",
+  admin: "Створювати користувачів, видавати інвайти, керувати ролями.",
 };
 
 const HOME_PATH: Record<Role, string> = {
@@ -77,9 +66,9 @@ export default function RoleSelectionPage() {
             style={{ textAlign: "left", padding: "14px 18px", flexDirection: "column", alignItems: "flex-start" }}
             onClick={() => choose(role)}
           >
-            <strong>{ROLE_COPY[role].title}</strong>
+            <strong>{ROLE_LABEL[role]}</strong>
             <div className="text-muted" style={{ fontSize: "0.875rem", marginTop: 4 }}>
-              {ROLE_COPY[role].description}
+              {ROLE_DESCRIPTION[role]}
             </div>
           </button>
         ))}

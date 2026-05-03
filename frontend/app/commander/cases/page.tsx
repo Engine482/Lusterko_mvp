@@ -8,15 +8,11 @@ import {
   type CommanderCaseRow,
 } from "@/lib/api/commander";
 import { humanError } from "@/lib/api/messages";
+import { RISK_LABEL } from "@/lib/labels";
 import { EmptyState, LoadingState } from "@/components/UiState";
 import type { RiskStatus } from "@/types/enums";
 
-const STATUS_LABEL: Record<RiskStatus, string> = {
-  green: "Green",
-  yellow: "Yellow",
-  red: "Red",
-  insufficient_data: "Недостатньо даних",
-};
+const STATUS_LABEL = RISK_LABEL;
 
 type FilterValue = RiskStatus | "all";
 
@@ -67,6 +63,7 @@ export default function CommanderCasesPage() {
         <input
           type="search"
           placeholder="Пошук за іменем"
+          aria-label="Пошук за іменем"
           value={name}
           onChange={(e) => setName(e.target.value)}
           style={{

@@ -69,7 +69,7 @@ export default function AdminDashboardPage() {
           Підрозділи
         </Link>
         <Link className="btn btn--ghost" href="/admin/audit">
-          Audit log
+          Журнал подій
         </Link>
       </nav>
     </section>
