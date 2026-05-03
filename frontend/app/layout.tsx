@@ -12,9 +12,36 @@ const inter = Inter({
   display: "swap",
 });
 
+const TITLE = "Люстерко — моніторинг стану особового складу";
+const DESCRIPTION =
+  "MVP системи короткого психофізіологічного самозвіту, baseline-оцінки та командирського огляду стану підрозділу.";
+
 export const metadata: Metadata = {
-  title: "Люстерко",
-  description: "MVP моніторингу морально-психологічного стану особового складу",
+  title: {
+    default: TITLE,
+    template: "%s · Люстерко",
+  },
+  description: DESCRIPTION,
+  applicationName: "Люстерко",
+  authors: [{ name: "Volodymyr Motornyi" }],
+  openGraph: {
+    title: TITLE,
+    description: DESCRIPTION,
+    locale: "uk_UA",
+    type: "website",
+    siteName: "Люстерко",
+  },
+  twitter: {
+    card: "summary",
+    title: TITLE,
+    description: DESCRIPTION,
+  },
+  appleWebApp: {
+    capable: true,
+    title: "Люстерко",
+    statusBarStyle: "black-translucent",
+  },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {

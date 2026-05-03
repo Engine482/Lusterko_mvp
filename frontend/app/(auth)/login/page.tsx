@@ -70,6 +70,10 @@ export default function LoginPage() {
       <p style={{ marginTop: 24 }}>
         <a href="/forgot-password">Забули пароль?</a>
       </p>
+      <div className="disclaimer">
+        Демо-версія. Дані використовуються лише для демонстрації MVP. Система не
+        є медичним діагностичним інструментом.
+      </div>
     </section>
   );
 }
