@@ -40,10 +40,14 @@ from app.schemas.auth import (
     LoginRequest,
     LoginResponse,
     LogoutResponse,
+    PasswordChangeRequest,
+    PasswordChangeResponse,
     PasswordForgotRequest,
     PasswordForgotResponse,
     PasswordResetRequest,
     PasswordResetResponse,
+    ProfileUpdateRequest,
+    ProfileUpdateResponse,
     RefreshResponse,
     SelectRoleRequest,
     SelectRoleResponse,
@@ -328,3 +332,61 @@ def logout(
     response = success_response(LogoutResponse(logged_out=True).model_dump())
     clear_session_cookie(response)
     return response
+
+
+# --- In-session profile / password change -----------------------------------
+
+
+@router.post("/password/change")
+def password_change(
+    payload: PasswordChangeRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: SessionContext = Depends(require_authenticated_session),
+) -> Response:
+    """Change the password while logged in. Requires the current password to
+    prevent session-takeover from updating credentials. Other devices get
+    logged out; the current browser keeps its session."""
+
+    ip = _client_ip(request)
+    try:
+        auth_service.change_password(
+            db,
+            user=ctx.user,
+            current_session=ctx.session,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+            ip_address=ip,
+        )
+    except auth_service.AuthError as err:
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+    db.commit()
+    return success_response(PasswordChangeResponse(changed=True).model_dump())
+
+
+@router.patch("/me")
+def update_me(
+    payload: ProfileUpdateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    ctx: SessionContext = Depends(require_authenticated_session),
+) -> Response:
+    """Update the user's own display name. Limited to fields the user can
+    change about themselves; role/email changes stay in the admin module."""
+
+    ip = _client_ip(request)
+    try:
+        auth_service.update_profile(
+            db,
+            user=ctx.user,
+            full_name=payload.full_name,
+            ip_address=ip,
+        )
+    except auth_service.AuthError as err:
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+    db.commit()
+    return success_response(
+        ProfileUpdateResponse(user=UserBrief.model_validate(ctx.user)).model_dump(mode="json")
+    )

@@ -162,5 +162,7 @@ AuditEventType = Literal[
     "password_reset_completed",
     "password_reset_email_sent",
     "password_reset_email_failed",
+    "password_changed",
+    "profile_updated",
     "account_locked",
 ]

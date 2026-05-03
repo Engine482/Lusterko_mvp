@@ -45,6 +45,20 @@ body {
   gap: 12px;
 }
 
+.settings-link {
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 6px 10px;
+  border-radius: 4px;
+  font: inherit;
+}
+
+.settings-link:hover,
+.settings-link:focus-visible {
+  background: rgba(0, 0, 0, 0.04);
+}
+
 .logout-button {
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: transparent;
@@ -63,6 +77,33 @@ body {
   color: #b00020;
   font-size: 0.875rem;
   margin-left: 8px;
+}
+
+.settings__nav {
+  display: flex;
+  gap: 12px;
+  margin: 12px 0 24px;
+}
+
+.settings__nav a {
+  text-decoration: none;
+  color: inherit;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  padding: 6px 12px;
+  border-radius: 4px;
+}
+
+.settings__nav a:hover,
+.settings__nav a:focus-visible {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.alert--success {
+  color: #1b5e20;
+  background: rgba(46, 125, 50, 0.08);
+  border: 1px solid rgba(46, 125, 50, 0.25);
+  padding: 8px 12px;
+  border-radius: 4px;
 }
 
 .role-switcher {

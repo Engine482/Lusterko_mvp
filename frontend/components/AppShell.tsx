@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { LogoutButton } from "./LogoutButton";
 import { RoleSwitcher } from "./RoleSwitcher";
+import { SettingsLink } from "./SettingsLink";
 
 type AppShellProps = {
   children: ReactNode;
@@ -14,6 +15,7 @@ export function AppShell({ children }: AppShellProps) {
         <span className="app-shell__brand">Люстерко</span>
         <div className="app-shell__user-area">
           <RoleSwitcher />
+          <SettingsLink />
           <LogoutButton />
         </div>
       </header>

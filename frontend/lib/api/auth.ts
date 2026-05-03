@@ -43,4 +43,14 @@ export const authApi = {
     }),
   refresh: () => apiCall<{ refreshed: boolean }>("/api/v1/auth/refresh", { method: "POST" }),
   logout: () => apiCall<{ logged_out: boolean }>("/api/v1/auth/logout", { method: "POST" }),
+  passwordChange: (current_password: string, new_password: string) =>
+    apiCall<{ changed: boolean }>("/api/v1/auth/password/change", {
+      method: "POST",
+      body: { current_password, new_password },
+    }),
+  updateProfile: (full_name: string) =>
+    apiCall<{ user: AuthMe["user"] }>("/api/v1/auth/me", {
+      method: "PATCH",
+      body: { full_name },
+    }),
 };

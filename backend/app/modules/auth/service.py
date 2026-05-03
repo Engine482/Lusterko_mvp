@@ -324,6 +324,25 @@ def revoke_all_sessions(db: Session, *, user_id: uuid.UUID) -> int:
     return len(sessions)
 
 
+def revoke_other_sessions(
+    db: Session, *, user_id: uuid.UUID, keep_session_id: uuid.UUID
+) -> int:
+    """Revoke every active session for a user except `keep_session_id`. Used
+    on in-session password change so other devices are forced to re-login
+    while the current browser stays signed in."""
+
+    sessions = db.execute(
+        select(UserSession).where(
+            UserSession.user_id == user_id,
+            UserSession.status == "active",
+            UserSession.id != keep_session_id,
+        )
+    ).scalars().all()
+    for s in sessions:
+        s.status = "revoked"
+    return len(sessions)
+
+
 # --- Password reset ----------------------------------------------------------
 
 
@@ -412,5 +431,78 @@ def consume_password_reset(
         target_user_id=user.id,
         entity_type="password_reset_tokens",
         entity_id=reset_row.id,
+    )
+    return user
+
+
+# --- In-session profile / password change -----------------------------------
+
+
+def change_password(
+    db: Session,
+    *,
+    user: User,
+    current_session: UserSession,
+    current_password: str,
+    new_password: str,
+    ip_address: str | None,
+) -> int:
+    """Verify the current password, set the new one, revoke sessions on other
+    devices. Returns the number of revoked sibling sessions. Distinct from
+    `consume_password_reset` because the current session is preserved — the
+    user keeps their browser signed in."""
+
+    if not verify_password(current_password, user.password_hash):
+        raise AuthError("UNAUTHORIZED", "Current password does not match.")
+    try:
+        user.password_hash = hash_password(new_password)
+    except PasswordPolicyError as err:
+        raise AuthError("WEAK_PASSWORD", str(err)) from err
+
+    revoked = revoke_other_sessions(
+        db, user_id=user.id, keep_session_id=current_session.id
+    )
+    log_event(
+        db,
+        event_type="password_changed",
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        entity_type="users",
+        entity_id=user.id,
+        ip_address=ip_address,
+        metadata={"revoked_other_sessions": revoked},
+    )
+    return revoked
+
+
+def update_profile(
+    db: Session,
+    *,
+    user: User,
+    full_name: str,
+    ip_address: str | None,
+) -> User:
+    """Update the user's display name. Trims whitespace and validates length
+    (Pydantic already enforces min/max but we re-check post-strip)."""
+
+    cleaned = full_name.strip()
+    if not cleaned:
+        raise AuthError("INVALID_PROFILE", "Display name cannot be empty.")
+    if len(cleaned) > 200:
+        raise AuthError("INVALID_PROFILE", "Display name is too long.")
+    if cleaned == user.full_name:
+        return user
+
+    previous = user.full_name
+    user.full_name = cleaned
+    log_event(
+        db,
+        event_type="profile_updated",
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        entity_type="users",
+        entity_id=user.id,
+        ip_address=ip_address,
+        metadata={"field": "full_name", "previous": previous, "current": cleaned},
     )
     return user
