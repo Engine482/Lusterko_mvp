@@ -1,180 +1,126 @@
-# Lusterko — Developer Bootstrap Pack
+# Люстерко
 
-Це bootstrap pack для старту розробки MVP «Люстерко» у Claude Code, Codex CLI, Cursor або руками через git repo.
+**Цифровий інструмент раннього моніторингу морально-психологічного стану особового складу.**
 
-## Що всередині
+Live demo: [lusterko.motornyi.com](https://lusterko.motornyi.com) · API: [api.lusterko.motornyi.com](https://api.lusterko.motornyi.com)
 
-- `docs/01_product/PRD.md` — головний продуктовий документ у markdown
-- `docs/00_index/Lusterko_Master_Index_v1.md` — навігація по пакету
-- `docs/02_pre_build/` — pre-build документи
-- `docs/03_planning/` — sprint plan і backlog
-- `docs/04_environment/` — інструкції для dev і deploy на одному Hetzner VPS
-- `docs/05_repo_and_agenting/` — інструкції для AI-агентів, repo structure і bootstrap sequence
-- `sources/` — оригінальні PDF
-- `AGENTS.md` — правила для AI coding agents
-- `.gitignore` — стартовий ignore для monorepo Next.js + FastAPI + Postgres
-- `.env.example` — шаблон локальних змінних без секретів
-- `infra/docker-compose.yml` — локальний PostgreSQL для dev
+---
 
-## Рекомендований порядок читання
+## Навіщо це
 
-1. `docs/01_product/PRD.md`
-2. `docs/00_index/Lusterko_Master_Index_v1.md`
-3. `docs/02_pre_build/Lusterko_Risk_Engine_Spec_v1.md`
-4. `docs/02_pre_build/Lusterko_API_Contracts_v1.md`
-5. `docs/02_pre_build/Lusterko_DB_Schema_v1.md`
-6. `docs/02_pre_build/Lusterko_RBAC_Matrix_v1.md`
-7. `docs/02_pre_build/Lusterko_Wireframes_P0_v1.md`
-8. `docs/02_pre_build/Lusterko_Test_Scenarios_P0_v1.md`
-9. `docs/03_planning/Lusterko_Sprint_Plan_P0_v1.md`
-10. `docs/03_planning/Lusterko_Development_Backlog_v1.md`
-11. `docs/04_environment/DEV_ENV_HETZNER_VPS.md`
-12. `docs/04_environment/DEPLOYMENT_ENV_HETZNER_VPS.md`
-13. `docs/04_environment/DEV_PROD_SAME_MAC_MINI.md`
-14. `docs/05_repo_and_agenting/BOOTSTRAP_PROMPT.md`
+У підрозділах морально-психологічний стан військового зазвичай оцінюється фрагментарно
+й суб'єктивно — поведінкою, працездатністю або вже явними ознаками проблеми. Через це
+негативна динаміка виявляється запізно: командир, медик або психолог отримують не
+ранній сигнал, а вже наслідок.
 
-## Мінімальний результат цього пакета
+«Люстерко» переводить цей параметр у короткий, регулярний і структурований контур
+спостереження. Військовий заповнює коротку щоденну форму (4 шкали + опціональний коментар),
+періодично проходить переоцінку (PHQ-4, PSS-4) і когнітивні проби (тест реакції,
+Go/No-Go). Бекенд агрегує дані у пояснюваний risk-сигнал (Green / Yellow / Red), а
+командир та психолог отримують пріоритезований список кейсів за своєю зоною
+відповідальності.
 
-Пакета достатньо, щоб:
-- підняти repo
-- налаштувати локальну/dev інфраструктуру на одному Hetzner VPS
-- почати Sprint 0 і Sprint 1
-- передати пакет Claude Code без втрати продуктової рамки
+## Що входить у MVP (P0)
 
-## Що не треба робити на старті
+- **Військовий**: baseline (PHQ-4 + PSS-4 + сон + реакція + Go/No-Go), щоденний
+  check-in (~30 секунд), щотижнева переоцінка, періодичні когнітивні проби.
+- **Командир**: дашборд підрозділу, фільтри статусів, scoped доступ до кейсів зі своїх
+  підлеглих. Бачить агрегований ризик і пояснення, не raw scores.
+- **Психолог**: пріоритезовані кейси, ведення статусу (нове → у роботі →
+  моніторинг → закрите), нотатки.
+- **Адміністратор**: створення користувачів, видача інвайтів, керування ролями та
+  підрозділами, audit log.
+- **Risk Engine**: rule-based, повністю пояснюваний — кожен Yellow/Red супроводжується
+  текстовою підставою.
+- **AI-модуль**: вузько обмежений — структурує короткий текстовий коментар бійця у
+  набір markers (`sleep_issue`, `low_mood`, `anxiety_tension` тощо) із fallback на
+  raw-text при збої.
+- **Auth**: email + пароль, multi-role, RBAC enforced server-side, повний audit
+  log security/clinical подій.
 
-- не роздувати MVP новими фічами
-- не розбивати P0 на мікросервіси
-- не ускладнювати AI beyond comment parsing
-- не додавати ще один auth provider
-- не додавати аналітику V2+
+## Що навмисно НЕ входить (і чому)
 
-## Рекомендована базова структура repo
+- **Не клінічна діагностика.** Система — інструмент раннього спостереження, не
+  замінює фахівця.
+- **Не терапевтичний чат-бот.** AI вузько обмежений parsing-роллю.
+- **Не автономний AI-агент.** Жодне рішення про людину не приймається машиною.
+- **Не predictive ML.** Risk Engine rule-based і пояснюваний; ML-прогнозування —
+  питання P2+ після пілоту.
+- **Без важких інтеграцій** із зовнішніми відомчими системами — це блокувало б
+  пілот.
+- **Без email/SMS notifications, PDF/CSV exports, складної адмінки** — все це
+  cut-list MVP. У pilot важливо перевірити сам цикл моніторингу, не обвʼязку.
+- **Один підрозділ, 30–100 користувачів** на pilot. Multi-tenant і масштабування —
+  після підтвердження життєздатності циклу.
 
-```text
-lusterko/
-├── backend/
-├── frontend/
-├── docs/
-├── infra/
-├── scripts/
-├── .env.example
-├── .gitignore
-├── README.md
-└── AGENTS.md
-```
+## Стратегічне бачення
 
-## Dev commands
+MVP існує щоб *довести життєздатність* короткого регулярного цифрового моніторингу
+стану. Якщо пілот покаже, що цикл працює (виявлення ризику раніше, ніж дозволяє
+поточна практика; розумне навантаження на бійця; корисні сигнали для командира та
+психолога), наступний горизонт — **P1**:
 
-```bash
-make setup
-make db-up
-make lint
-make test
-make run
-```
+- розширення на кілька підрозділів із tenancy-моделлю;
+- email/SMS-нагадування й notifications;
+- повноцінна адмінка (масові операції, експорти, ролі понад MVP-set);
+- іnтеграція з відомчими системами (там де це безпечно й доцільно);
+- розширений analytics layer для організаційних висновків.
 
-`make run` is intentionally a placeholder until product code exists. Backend dependencies are managed with `uv` in `backend/`; frontend uses `pnpm` in `frontend/`.
+**P2+** — потенційно ML-прогнозування динаміки, мобільні нативні застосунки,
+підтримка інших мов, інтеграція з фізіологічними сенсорами (sleep / HRV). Але не
+раніше, ніж буде доведено цінність базового циклу.
 
-## Local services
+Принципова позиція — *ніколи* не перетворитись у:
 
-Only PostgreSQL is defined for now:
+- цифрову психіатрію з претензією на діагностику;
+- терапевтичний чат-бот;
+- неконтрольованого AI-агента;
+- важку бюрократичну форму "про все".
 
-```bash
-make db-up
-make db-down
-```
+## Стек
 
-Copy `.env.example` to a local `.env` when real credentials are needed. Do not commit `.env` or secret values.
+- **Backend**: FastAPI + SQLAlchemy + PostgreSQL, Alembic-міграції, argon2id для
+  паролів, session cookies (30 днів rolling), rate-limit + soft-lock на auth.
+- **Frontend**: Next.js 16 + React 19 (App Router, "use client" де треба),
+  TypeScript, без UI-фреймворків — clinical-tactical дизайн на CSS-токенах.
+- **Tests**: pytest (backend, 131 specs), Playwright (frontend e2e на 3
+  viewport-ах: desktop + iPhone SE + iPad Mini).
+- **Deploy**: Railway (managed PaaS) — Postgres + backend + frontend як окремі
+  сервіси, custom-domain TLS. Fallback runbook для single-host VPS / Mac mini у
+  `docs/04_environment/`.
 
-## Claude Code MCP
+## Поточний стан
 
-Project-scoped MCP config lives in `.mcp.json` and includes only:
+- **P0 завершено**, MVP на pilot stand: `lusterko.motornyi.com`.
+- 8 спринтів продуктового скоупу + 3 sprint-и UI/UX hardening (P0-UX-1/2/3) —
+  стабілізація мобільної верстки, clinical-tactical редизайн, identity, UI states,
+  accessibility baseline, demo readiness.
+- Demo script для презентації: `docs/03_planning/p0_ux_demo_script.md`.
 
-- `github` for repository, PR, issues, and workflow context via GitHub's official MCP endpoint.
-- `postgres` for read-only schema inspection and smoke queries against the local database.
+Це **демо-версія** — не медичний діагностичний інструмент і не заміна
+консультації фахівця.
 
-Set `GITHUB_MCP_PAT` and `LUSTERKO_DATABASE_URL` in your shell or local `.env` before using those integrations.
+---
 
-## Production deployment
+## Для розробників
 
-> **Status (2026-05-02):** the pilot deploy lives on **Railway** (managed PaaS).
-> Each service (postgres, backend, frontend) is a Railway service in a single
-> project; backend is reachable at `api.lusterko.motornyi.com`, frontend at
-> `lusterko.motornyi.com`. Custom domains and TLS are managed by Railway.
-> Migrations run as the backend service's pre-deploy command
-> (`alembic upgrade head`).
->
-> The runbook below describes the **fallback** single-host (VPS or Mac mini)
-> path using `infra/docker-compose.prod.yml` + nginx. We keep it in case the
-> project ever moves off managed PaaS.
-
-Pilot target: a single VPS at `lusterko.motornyi.com`. The production stack is
-`infra/docker-compose.prod.yml` (postgres + backend + frontend) fronted by
-host-level nginx + Let's Encrypt.
-
-### One-time host setup
-
-1. **DNS.** Point an `A` record `lusterko.motornyi.com` → VPS IP.
-2. **Packages.** Install Docker Engine + the compose plugin, plus `nginx` and
-   `certbot` (with `python3-certbot-nginx`).
-3. **Repo.** `git clone` this repo into `/opt/lusterko_mvp` (path is just a
-   convention; `scripts/deploy.sh` runs from the repo root).
-4. **Env file.** Copy `.env.production.example` → `.env.production` and fill
-   in real secrets (`POSTGRES_PASSWORD`, `DATABASE_URL`, SMTP credentials).
-   Never commit this file.
-5. **Nginx vhost.** Copy `infra/nginx/lusterko.conf` to
-   `/etc/nginx/sites-available/lusterko.conf`, symlink to
-   `/etc/nginx/sites-enabled/`, and `nginx -t && systemctl reload nginx`.
-6. **TLS.** First-time certificate:
-   ```bash
-   certbot --nginx -d lusterko.motornyi.com
-   ```
-   Certbot installs its own systemd timer; renewals are automatic. The vhost
-   serves `/.well-known/acme-challenge/` from `/var/www/certbot` for renewals.
-7. **Bootstrap admin.** Bring postgres up, migrate, and seed the pilot admin
-   with all roles. Two modes:
-   - **Password mode** (recommended for prod): set `BOOTSTRAP_ADMIN_PASSWORD`
-     to a strong value (≥12 chars) — admin is created with the hash directly,
-     no email/invite step needed:
-   ```bash
-   docker compose --env-file .env.production -f infra/docker-compose.prod.yml up -d postgres
-   docker compose --env-file .env.production -f infra/docker-compose.prod.yml run --rm \
-     -e ADMIN_EMAIL=motorny.v@gmail.com \
-     -e ADMIN_FULL_NAME="Motorny V." \
-     -e SEED_UNIT_NAME="Тестовий підрозділ" \
-     -e BOOTSTRAP_USER_ROLES=admin,soldier,commander,medic_psych \
-     -e BOOTSTRAP_ADMIN_PASSWORD='paste-strong-password-here' \
-     backend python -m scripts.seed
-   ```
-   - **Invite mode** (default — when `BOOTSTRAP_ADMIN_PASSWORD` unset): admin
-     is created with `password_hash = NULL` and a fresh first-login invite is
-     printed; admin clicks the link and sets their own password via
-     `/invite?token=…`. Same command without that env var.
-   ```
-
-### Recurring deploy
+Документація проекту — у `docs/`. Точка входу: `docs/00_index/Lusterko_Master_Index_v1.md`.
+Правила для AI coding agents — у `AGENTS.md`.
 
 ```bash
-./scripts/deploy.sh
+make setup          # встановити backend (uv) + frontend (pnpm) залежності
+make db-up          # підняти локальний Postgres у Docker
+make db-migrate     # alembic upgrade head
+make seed           # створити admin: див. backend/scripts/seed.py
+make run-backend    # uvicorn на :8001
+make run-frontend   # next dev на :3001
+make test           # pytest
+make lint           # ruff + mypy + eslint + tsc
 ```
 
-`deploy.sh` pulls main, rebuilds backend + frontend images, runs alembic
-migrations against the running postgres container, and recreates only the app
-containers — postgres stays up across deploys.
+Локальні e2e: `cd frontend && pnpm test:e2e`. Backend-залежні specs ходять до
+`http://127.0.0.1:8001` за замовчуванням; перевизначити через `E2E_API_BASE_URL`.
 
-### Backups
+## Автор
 
-Daily `pg_dump` via cron (root):
-
-```cron
-15 3 * * * root /opt/lusterko_mvp/scripts/backup_db.sh >> /var/log/lusterko-backup.log 2>&1
-```
-
-Backups live under `/var/backups/lusterko/` (override with `BACKUP_DIR`).
-Retention defaults to 14 days (`RETENTION_DAYS`).
-
-### Sanity check
-
-`make prod-build` runs `docker compose -f infra/docker-compose.prod.yml build`
-locally — useful in CI or before a release to catch broken Dockerfiles.
+Volodymyr Motornyi · 2026
