@@ -4,5 +4,5 @@ import { expect, test } from "@playwright/test";
 // Does not depend on backend — only checks public shell on the login route.
 test("login route renders the Lusterko brand", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByText("Люстерко")).toBeVisible();
+  await expect(page.locator(".app-shell__brand")).toBeVisible();
 });

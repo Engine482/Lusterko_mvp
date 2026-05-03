@@ -30,10 +30,10 @@ export default function ForgotPasswordPage() {
 
   if (submitted) {
     return (
-      <section>
+      <section className="auth-card">
         <h1>Запит надіслано</h1>
         <p>
-          Якщо введена адреса зареєстрована в Lusterko — на неї надійде лист
+          Якщо введена адреса зареєстрована в Люстерку — на неї надійде лист
           із посиланням для скидання паролю. Посилання дійсне 1 годину.
         </p>
         <p>

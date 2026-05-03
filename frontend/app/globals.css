@@ -382,3 +382,114 @@ a:focus-visible {
   color: var(--text-secondary);
   font-size: var(--font-size-sm);
 }
+
+/* ── Layout primitives ── */
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-bottom: var(--space-5);
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.page-header__sub {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+}
+
+/* ── Chip / filter pill ── */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 8px 14px;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text-secondary);
+  border-radius: var(--radius-pill);
+  font: inherit;
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  min-height: var(--tap-target);
+  transition: background var(--transition-base), color var(--transition-base),
+    border-color var(--transition-base);
+}
+
+.chip:hover:not(:disabled) {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+}
+
+.chip[aria-pressed="true"],
+.chip--active {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+
+/* ── Auth card (centered single-form layout) ── */
+
+.auth-card {
+  max-width: 420px;
+  margin: var(--space-6) auto;
+  padding: var(--space-5);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+}
+
+.auth-card h1 {
+  margin-top: 0;
+  font-size: var(--font-size-h2);
+}
+
+/* ── Settings nav active state ── */
+
+.settings__nav a[aria-current="page"] {
+  background: var(--accent);
+  color: var(--accent-fg);
+  border-color: var(--accent);
+}
+
+/* ── Footer ── */
+
+.app-shell__footer {
+  border-top: 1px solid var(--border);
+  background: var(--bg-secondary);
+  padding: var(--space-4) var(--page-pad-x);
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.app-shell__footer__badge {
+  font-family: var(--font-mono);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 2px 10px;
+  color: var(--text-secondary);
+}

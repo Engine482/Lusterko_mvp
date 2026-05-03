@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { AppFooter } from "./AppFooter";
 import { LogoutButton } from "./LogoutButton";
 import { RoleSwitcher } from "./RoleSwitcher";
 import { SettingsLink } from "./SettingsLink";
@@ -20,6 +21,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
       </header>
       <main className="app-shell__main">{children}</main>
+      <AppFooter />
     </div>
   );
 }

@@ -84,16 +84,14 @@ export default function CommanderDashboardPage() {
         ))}
       </ul>
 
-      <div style={{ marginTop: 24, display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="row" style={{ marginTop: 24 }}>
         {FILTERS.map((f) => (
           <button
             key={f}
             type="button"
-            className="btn"
+            className="chip"
+            aria-pressed={filter === f}
             onClick={() => setFilter(f)}
-            style={{
-              opacity: filter === f ? 1 : 0.5,
-            }}
           >
             {f === "all" ? "Всі" : STATUS_LABEL[f]}
           </button>

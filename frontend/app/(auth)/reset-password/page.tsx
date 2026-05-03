@@ -56,7 +56,7 @@ export default function ResetPasswordPage() {
   };
 
   return (
-    <section>
+    <section className="auth-card">
       <h1>Новий пароль</h1>
       <p>
         Задайте новий пароль для свого акаунта. Після збереження ви увійдете

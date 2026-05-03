@@ -57,30 +57,30 @@ export default function MedicCasesListPage() {
   return (
     <section>
       <h1>Medic — Priority Cases</h1>
-      <div style={{ display: "grid", gap: 8, marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ alignSelf: "center" }}>Ризик:</span>
+      <div className="stack" style={{ marginBottom: 16 }}>
+        <div className="row">
+          <span className="text-muted" style={{ alignSelf: "center" }}>Ризик:</span>
           {RISK_FILTERS.map((f) => (
             <button
               key={f}
               type="button"
-              className="btn"
+              className="chip"
+              aria-pressed={riskFilter === f}
               onClick={() => setRiskFilter(f)}
-              style={{ opacity: riskFilter === f ? 1 : 0.5 }}
             >
               {f === "all" ? "Всі" : RISK_LABEL[f]}
             </button>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ alignSelf: "center" }}>Кейс:</span>
+        <div className="row">
+          <span className="text-muted" style={{ alignSelf: "center" }}>Кейс:</span>
           {CASE_FILTERS.map((f) => (
             <button
               key={f}
               type="button"
-              className="btn"
+              className="chip"
+              aria-pressed={caseFilter === f}
               onClick={() => setCaseFilter(f)}
-              style={{ opacity: caseFilter === f ? 1 : 0.5 }}
             >
               {f === "open" ? "Відкриті" : CASE_LABEL[f]}
             </button>

@@ -63,20 +63,22 @@ export default function RoleSelectionPage() {
   if (!me) return <p>Завантаження…</p>;
 
   return (
-    <section>
+    <section className="auth-card" style={{ maxWidth: 540 }}>
       <h1>Оберіть роль</h1>
-      <p>У вас декілька ролей. Активна роль визначає доступні дані та інтерфейс.</p>
-      <div style={{ display: "grid", gap: 12, maxWidth: 480 }}>
+      <p className="text-muted">
+        У вас декілька ролей. Активна роль визначає доступні дані та інтерфейс.
+      </p>
+      <div className="stack" style={{ marginTop: 16 }}>
         {me.roles.map((role) => (
           <button
             key={role}
             type="button"
             className="btn btn--ghost"
-            style={{ textAlign: "left" }}
+            style={{ textAlign: "left", padding: "14px 18px", flexDirection: "column", alignItems: "flex-start" }}
             onClick={() => choose(role)}
           >
             <strong>{ROLE_COPY[role].title}</strong>
-            <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
+            <div className="text-muted" style={{ fontSize: "0.875rem", marginTop: 4 }}>
               {ROLE_COPY[role].description}
             </div>
           </button>

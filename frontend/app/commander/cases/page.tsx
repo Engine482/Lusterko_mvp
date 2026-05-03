@@ -51,14 +51,14 @@ export default function CommanderCasesPage() {
   return (
     <section>
       <h1>Кейси підрозділу</h1>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <div className="row">
         {FILTERS.map((f) => (
           <button
             key={f}
             type="button"
-            className="btn"
+            className="chip"
+            aria-pressed={filter === f}
             onClick={() => setFilter(f)}
-            style={{ opacity: filter === f ? 1 : 0.5 }}
           >
             {f === "all" ? "Всі" : STATUS_LABEL[f]}
           </button>
@@ -68,7 +68,16 @@ export default function CommanderCasesPage() {
           placeholder="Пошук за іменем"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          style={{ flex: 1, minWidth: 200, padding: 8 }}
+          style={{
+            flex: 1,
+            minWidth: 200,
+            padding: "10px 12px",
+            background: "var(--bg-card)",
+            color: "var(--text-primary)",
+            border: "1px solid var(--border-strong)",
+            borderRadius: "var(--radius-input)",
+            minHeight: "var(--tap-target)",
+          }}
         />
       </div>
 

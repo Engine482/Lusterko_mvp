@@ -39,8 +39,8 @@ export default function LoginPage() {
   };
 
   return (
-    <section>
-      <h1>Вхід у Lusterko</h1>
+    <section className="auth-card">
+      <h1>Вхід у Люстерко</h1>
       <form className="form-grid" onSubmit={submit} noValidate>
         <label>
           Email

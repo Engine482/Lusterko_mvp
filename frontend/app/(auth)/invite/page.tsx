@@ -63,10 +63,10 @@ export default function InviteLandingPage() {
   };
 
   return (
-    <section>
+    <section className="auth-card">
       <h1>Вхід за інвайтом</h1>
       <p>
-        Встановіть пароль для свого акаунта в Lusterko. Email — це той, на який
+        Встановіть пароль для свого акаунта в Люстерку. Email — це той, на який
         вам надійшло запрошення.
       </p>
       <form className="form-grid" onSubmit={submit} noValidate>
