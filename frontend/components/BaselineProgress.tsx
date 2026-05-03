@@ -6,13 +6,13 @@ export function BaselineProgress({ current }: Props) {
   const total = 5;
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.6)" }}>
+      <div className="text-muted" style={{ fontSize: "0.875rem" }}>
         Крок {current} / {total}
       </div>
       <div
         style={{
           height: 6,
-          background: "rgba(0,0,0,0.08)",
+          background: "var(--border)",
           borderRadius: 3,
           marginTop: 4,
         }}
@@ -21,7 +21,7 @@ export function BaselineProgress({ current }: Props) {
           style={{
             width: `${(current / total) * 100}%`,
             height: "100%",
-            background: "#1a73e8",
+            background: "var(--accent)",
             borderRadius: 3,
             transition: "width 200ms",
           }}

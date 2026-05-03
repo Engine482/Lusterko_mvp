@@ -11,8 +11,9 @@ export function LikertScale({ label, value, options, onChange }: Props) {
   return (
     <fieldset
       style={{
-        border: "1px solid rgba(0,0,0,0.12)",
-        borderRadius: 6,
+        border: "1px solid var(--border)",
+        background: "var(--bg-card)",
+        borderRadius: "var(--radius-card)",
         padding: "12px 16px",
         marginBottom: 12,
       }}

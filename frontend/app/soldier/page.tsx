@@ -56,7 +56,7 @@ export default function SoldierHomePage() {
   return (
     <section>
       <h1>Привіт</h1>
-      <p style={{ color: "rgba(0,0,0,0.6)" }}>{todayLabel}</p>
+      <p className="text-muted">{todayLabel}</p>
 
       <h2 style={{ marginTop: 24 }}>До виконання</h2>
       <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>

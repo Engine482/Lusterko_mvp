@@ -113,15 +113,20 @@ export function ReactionTest({ onComplete }: Props) {
       style={{
         width: "100%",
         minHeight: 240,
-        border: "none",
-        borderRadius: 8,
+        border: "1px solid var(--border)",
+        borderRadius: "var(--radius-card)",
         background:
           phase === "ready"
-            ? "#1a73e8"
+            ? "var(--accent)"
             : phase === "too_early"
-              ? "#b00020"
-              : "rgba(0,0,0,0.06)",
-        color: phase === "ready" || phase === "too_early" ? "white" : "inherit",
+              ? "var(--status-danger)"
+              : "var(--bg-card)",
+        color:
+          phase === "ready"
+            ? "var(--accent-fg)"
+            : phase === "too_early"
+              ? "var(--text-on-status)"
+              : "var(--text-primary)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",

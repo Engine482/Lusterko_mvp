@@ -112,7 +112,11 @@ export function GoNoGoTest({ onComplete }: Props) {
   }
 
   const bg =
-    stimulus === "go" ? "#1a73e8" : stimulus === "nogo" ? "#b00020" : "rgba(0,0,0,0.06)";
+    stimulus === "go"
+      ? "var(--accent)"
+      : stimulus === "nogo"
+        ? "var(--status-danger)"
+        : "var(--bg-card)";
 
   return (
     <div>
@@ -123,7 +127,8 @@ export function GoNoGoTest({ onComplete }: Props) {
         onClick={handlePress}
         style={{
           height: 240,
-          borderRadius: 8,
+          border: "1px solid var(--border)",
+          borderRadius: "var(--radius-card)",
           background: bg,
           cursor: "pointer",
           userSelect: "none",

@@ -19,10 +19,10 @@ const STATUS_LABEL: Record<RiskStatus, string> = {
 };
 
 const STATUS_BG: Record<RiskStatus, string> = {
-  red: "#b00020",
-  yellow: "#b07a00",
-  green: "#1a7a3a",
-  insufficient_data: "rgba(0,0,0,0.4)",
+  red: "var(--risk-red)",
+  yellow: "var(--risk-yellow)",
+  green: "var(--risk-green)",
+  insufficient_data: "var(--risk-unknown)",
 };
 
 type FilterValue = RiskStatus | "all";

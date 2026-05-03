@@ -176,7 +176,7 @@ export default function MedicCaseDetailPage({
         <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
           {detail.notes.map((n) => (
             <li key={n.id} className="kpi-card">
-              <div style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.6)" }}>
+              <div className="text-muted" style={{ fontSize: "0.8125rem" }}>
                 {new Date(n.created_at).toLocaleString("uk-UA")}
               </div>
               <div style={{ marginTop: 4 }}>{n.text}</div>

@@ -10,7 +10,7 @@ export default function HomePage() {
           Увійти
         </a>
       </p>
-      <p style={{ fontSize: "0.875rem", marginTop: 24, color: "#666" }}>
+      <p className="text-muted" style={{ fontSize: "0.875rem", marginTop: 24 }}>
         Новий користувач? Перейдіть за посиланням з інвайт-листа,
         отриманого від адміністратора.
       </p>

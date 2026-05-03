@@ -52,7 +52,7 @@ export default function CommanderCaseCardPage({
       <h1 style={{ marginTop: 12 }}>{card.full_name}</h1>
       <p>Поточний статус: <strong>{STATUS_LABEL[card.current_risk_status]}</strong></p>
       {card.calculated_at && (
-        <p style={{ fontSize: "0.875rem", color: "rgba(0,0,0,0.6)" }}>
+        <p className="text-muted" style={{ fontSize: "0.875rem" }}>
           Оновлено: {new Date(card.calculated_at).toLocaleString("uk-UA")}
         </p>
       )}
@@ -71,7 +71,7 @@ export default function CommanderCaseCardPage({
           {card.recent_status_trend.map((entry, idx) => (
             <li key={idx} style={{ display: "flex", justifyContent: "space-between" }}>
               <span>{STATUS_LABEL[entry.status]}</span>
-              <span style={{ fontSize: "0.8125rem", color: "rgba(0,0,0,0.6)" }}>
+              <span className="text-muted" style={{ fontSize: "0.8125rem" }}>
                 {entry.at ? new Date(entry.at).toLocaleString("uk-UA") : "—"} · {entry.source}
               </span>
             </li>
