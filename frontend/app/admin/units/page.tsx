@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { adminApi, type AdminUnit } from "@/lib/api/admin";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §8.5 — Units Screen.
 export default function AdminUnitsPage() {
@@ -16,7 +16,7 @@ export default function AdminUnitsPage() {
     adminApi
       .listUnits()
       .then((res) => setItems(res.items))
-      .catch((err) => setError(describeError(err)));
+      .catch((err) => setError(humanError(err)));
   };
 
   useEffect(() => {
@@ -27,7 +27,7 @@ export default function AdminUnitsPage() {
         if (!cancelled) setItems(res.items);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;
@@ -42,7 +42,7 @@ export default function AdminUnitsPage() {
       setCode("");
       reload();
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

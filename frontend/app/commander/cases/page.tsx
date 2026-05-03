@@ -7,7 +7,8 @@ import {
   commanderApi,
   type CommanderCaseRow,
 } from "@/lib/api/commander";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
+import { EmptyState, LoadingState } from "@/components/UiState";
 import type { RiskStatus } from "@/types/enums";
 
 const STATUS_LABEL: Record<RiskStatus, string> = {
@@ -39,7 +40,7 @@ export default function CommanderCasesPage() {
         if (!cancelled) setCases(res.cases);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;
@@ -81,8 +82,15 @@ export default function CommanderCasesPage() {
         />
       </div>
 
-      {cases === null && <p style={{ marginTop: 12 }}>Завантаження…</p>}
-      {cases && cases.length === 0 && <p style={{ marginTop: 12 }}>Немає кейсів.</p>}
+      {cases === null && <div style={{ marginTop: 12 }}><LoadingState /></div>}
+      {cases && cases.length === 0 && (
+        <div style={{ marginTop: 12 }}>
+          <EmptyState
+            title="Жодного кейсу"
+            hint="Спробуйте змінити фільтр або очистити пошук за іменем."
+          />
+        </div>
+      )}
       {cases && cases.length > 0 && (
         <div className="table-wrap" style={{ marginTop: 12 }}>
           <table className="table">

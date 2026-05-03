@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { BaselineProgress } from "@/components/BaselineProgress";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §5.5 — Baseline Sleep Screen (single 0-10 scale).
 export default function BaselineSleepPage() {
@@ -20,7 +20,7 @@ export default function BaselineSleepPage() {
       await soldierApi.submitSleep(score);
       window.location.assign("/soldier/baseline/reaction");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setBusy(false);
     }

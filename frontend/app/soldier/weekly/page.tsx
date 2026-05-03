@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 
 import { LikertScale } from "@/components/LikertScale";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 const PHQ4_QUESTIONS = [
   "Відчуття пригніченості або безнадії",
@@ -56,7 +56,7 @@ export default function WeeklyReassessmentPage() {
         setEligible(cs.weekly_due);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;
@@ -75,7 +75,7 @@ export default function WeeklyReassessmentPage() {
       await soldierApi.submitWeeklyPhq4(phq4 as number[]);
       setStep("pss4");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setBusy(false);
     }
@@ -93,7 +93,7 @@ export default function WeeklyReassessmentPage() {
       await soldierApi.submitWeeklyPss4(pss4 as number[]);
       setStep("done");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setBusy(false);
     }

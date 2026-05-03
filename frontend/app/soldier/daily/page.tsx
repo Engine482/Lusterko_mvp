@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 const SCALES: { key: "sleep_score" | "energy_score" | "mood_score" | "concentration_score"; label: string }[] = [
   { key: "sleep_score", label: "Сон" },
@@ -35,7 +35,7 @@ export default function DailyCheckinPage() {
         }
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;
@@ -53,7 +53,7 @@ export default function DailyCheckinPage() {
       });
       window.location.assign("/soldier/daily/confirmation");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setBusy(false);
     }

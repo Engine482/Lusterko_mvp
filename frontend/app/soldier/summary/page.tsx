@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { soldierApi, type CompletionSummary } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §5.15 — Completion Summary.
 export default function SoldierSummaryPage() {
@@ -19,7 +19,7 @@ export default function SoldierSummaryPage() {
         if (!cancelled) setSummary(res);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;

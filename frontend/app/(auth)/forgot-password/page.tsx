@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { authApi } from "@/lib/api/auth";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Sprint 7 — anti-enumeration "forgot password" form. Backend always
 // returns the same envelope; we render the same neutral confirmation
@@ -22,7 +22,7 @@ export default function ForgotPasswordPage() {
       await authApi.passwordForgot(email);
       setSubmitted(true);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setLoading(false);
     }

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BaselineProgress } from "@/components/BaselineProgress";
 import { ReactionTest } from "@/components/cognitive/ReactionTest";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §5.6 — Baseline Reaction Test.
 export default function BaselineReactionPage() {
@@ -18,7 +18,7 @@ export default function BaselineReactionPage() {
       setSubmitted(true);
       window.location.assign("/soldier/baseline/gonogo");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { adminApi, type AuditLogItem } from "@/lib/api/admin";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §8.6 — Audit Log Screen.
 export default function AdminAuditPage() {
@@ -19,7 +19,7 @@ export default function AdminAuditPage() {
         if (!cancelled) setItems(res.items);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;

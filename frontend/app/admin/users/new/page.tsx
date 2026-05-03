@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { adminApi, type AdminUnit } from "@/lib/api/admin";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 import type { Role } from "@/types/enums";
 
 const ALL_ROLES: Role[] = ["soldier", "commander", "medic_psych", "admin"];
@@ -22,7 +22,7 @@ export default function AdminCreateUserPage() {
     adminApi
       .listUnits()
       .then((res) => setUnits(res.items))
-      .catch((err) => setError(describeError(err)));
+      .catch((err) => setError(humanError(err)));
   }, []);
 
   const toggleRole = (role: Role) => {
@@ -47,7 +47,7 @@ export default function AdminCreateUserPage() {
       });
       setCreatedId(res.user.id);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

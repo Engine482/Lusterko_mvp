@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { soldierApi, type CompletionSummary, type OnboardingStatus } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 const STEP_LABEL: Record<string, string> = {
   phq4: "PHQ-4",
@@ -37,7 +37,7 @@ export default function SoldierHomePage() {
         setSummary(cs);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;

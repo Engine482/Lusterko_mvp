@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { ReactionTest } from "@/components/cognitive/ReactionTest";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §5.13 — periodic Reaction Test (cognitive context).
 export default function CognitiveReactionPage() {
@@ -17,7 +17,7 @@ export default function CognitiveReactionPage() {
       await soldierApi.submitCognitiveReaction(result.medianMs, result.validTrials);
       setDone(true);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

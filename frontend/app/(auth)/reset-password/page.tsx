@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { authApi } from "@/lib/api/auth";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 const MIN_PASSWORD = 12;
 
@@ -49,7 +49,7 @@ export default function ResetPasswordPage() {
       };
       window.location.assign(me.active_role ? home[me.active_role] : "/");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setLoading(false);
     }

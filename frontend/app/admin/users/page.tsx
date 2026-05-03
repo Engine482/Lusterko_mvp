@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { adminApi, type AdminUser } from "@/lib/api/admin";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 import type { Role, UserStatus } from "@/types/enums";
 
 const ROLES: Role[] = ["soldier", "commander", "medic_psych", "admin"];
@@ -32,7 +32,7 @@ export default function AdminUsersPage() {
         setTotal(res.total);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;

@@ -8,7 +8,8 @@ import {
   type CommanderCaseRow,
   type CommanderSummary,
 } from "@/lib/api/commander";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
+import { EmptyState, LoadingState } from "@/components/UiState";
 import type { RiskStatus } from "@/types/enums";
 
 const STATUS_LABEL: Record<RiskStatus, string> = {
@@ -48,7 +49,7 @@ export default function CommanderDashboardPage() {
         setCases(c.cases);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;
@@ -56,7 +57,7 @@ export default function CommanderDashboardPage() {
   }, [filter]);
 
   if (error) return <div className="alert alert--error">{error}</div>;
-  if (!summary) return <p>Завантаження…</p>;
+  if (!summary) return <LoadingState />;
 
   return (
     <section>
@@ -99,8 +100,13 @@ export default function CommanderDashboardPage() {
       </div>
 
       <h2 style={{ marginTop: 24 }}>Кейси</h2>
-      {cases === null && <p>Завантаження…</p>}
-      {cases && cases.length === 0 && <p>Немає кейсів.</p>}
+      {cases === null && <LoadingState />}
+      {cases && cases.length === 0 && (
+        <EmptyState
+          title="Немає кейсів за обраним фільтром"
+          hint="Спробуйте змінити статус ризику або вибрати «Всі»."
+        />
+      )}
       {cases && cases.length > 0 && (
         <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
           {cases.map((c) => (

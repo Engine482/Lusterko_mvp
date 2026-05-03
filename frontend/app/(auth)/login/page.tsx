@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { authApi } from "@/lib/api/auth";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Sprint 7 — email+password login screen.
 export default function LoginPage() {
@@ -32,7 +32,7 @@ export default function LoginPage() {
       };
       window.location.assign(me.active_role ? home[me.active_role] : "/");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setLoading(false);
     }

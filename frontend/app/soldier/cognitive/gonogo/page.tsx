@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { GoNoGoTest } from "@/components/cognitive/GoNoGoTest";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §5.14 — periodic Go / No-Go (cognitive context).
 export default function CognitiveGoNoGoPage() {
@@ -17,7 +17,7 @@ export default function CognitiveGoNoGoPage() {
       await soldierApi.submitCognitiveGoNoGo(r.commission, r.omission, r.validTrials);
       setDone(true);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

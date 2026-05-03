@@ -4,7 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { medicApi, type MedicCaseRow } from "@/lib/api/medic";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
+import { EmptyState, LoadingState } from "@/components/UiState";
 import type { CaseStatus, RiskStatus } from "@/types/enums";
 
 const RISK_LABEL: Record<RiskStatus, string> = {
@@ -45,7 +46,7 @@ export default function MedicCasesListPage() {
         if (!cancelled) setCases(res.cases);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;
@@ -88,8 +89,13 @@ export default function MedicCasesListPage() {
         </div>
       </div>
 
-      {cases === null && <p>Завантаження…</p>}
-      {cases && cases.length === 0 && <p>Немає кейсів.</p>}
+      {cases === null && <LoadingState />}
+      {cases && cases.length === 0 && (
+        <EmptyState
+          title="Жодного активного кейсу"
+          hint="Підберіть інший фільтр ризику або статус кейсу."
+        />
+      )}
       {cases && cases.length > 0 && (
         <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
           {cases.map((c) => (

@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BaselineProgress } from "@/components/BaselineProgress";
 import { GoNoGoTest } from "@/components/cognitive/GoNoGoTest";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §5.7 — Baseline Go / No-Go.
 export default function BaselineGoNoGoPage() {
@@ -21,7 +21,7 @@ export default function BaselineGoNoGoPage() {
         window.location.assign("/soldier/baseline/complete");
       }
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

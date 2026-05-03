@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { authApi, type AuthMe } from "@/lib/api/auth";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 import type { Role } from "@/types/enums";
 
 const ROLE_LABELS: Record<Role, string> = {
@@ -29,7 +29,7 @@ export function RoleSwitcher() {
     authApi
       .me()
       .then(setMe)
-      .catch((err) => setError(describeError(err)));
+      .catch((err) => setError(humanError(err)));
   }, []);
 
   if (!me) {
@@ -48,7 +48,7 @@ export function RoleSwitcher() {
       await authApi.selectRole(role);
       window.location.assign(HOME_PATH[role]);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

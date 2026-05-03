@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BaselineProgress } from "@/components/BaselineProgress";
 import { LikertScale } from "@/components/LikertScale";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 const QUESTIONS = [
   "Часто відчували, що не контролюєте важливі речі у своєму житті?",
@@ -40,7 +40,7 @@ export default function BaselinePss4Page() {
       await soldierApi.submitPss4(answers as number[]);
       window.location.assign("/soldier/baseline/sleep");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setBusy(false);
     }

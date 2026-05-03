@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 import { authApi } from "@/lib/api/auth";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Sprint 7 — Invite Landing: user lands here from the email link, sets a
 // password (and optionally fixes their full name), and ends up logged in.
@@ -56,7 +56,7 @@ export default function InviteLandingPage() {
       };
       window.location.assign(me.active_role ? home[me.active_role] : "/");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setLoading(false);
     }

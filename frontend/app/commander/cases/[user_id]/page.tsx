@@ -7,7 +7,7 @@ import {
   commanderApi,
   type CommanderCaseCard,
 } from "@/lib/api/commander";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 import type { RiskStatus } from "@/types/enums";
 
 const STATUS_LABEL: Record<RiskStatus, string> = {
@@ -36,7 +36,7 @@ export default function CommanderCaseCardPage({
         if (!cancelled) setCard(res);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;

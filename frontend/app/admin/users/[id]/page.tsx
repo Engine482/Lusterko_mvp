@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { adminApi, type AdminUser, type IssuedInvite } from "@/lib/api/admin";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 import type { Role } from "@/types/enums";
 
 const ALL_ROLES: Role[] = ["soldier", "commander", "medic_psych", "admin"];
@@ -29,7 +29,7 @@ export default function AdminUserProfilePage({ params }: Props) {
         setUser(res.user);
         setRoles(res.user.roles);
       })
-      .catch((err) => setError(describeError(err)));
+      .catch((err) => setError(humanError(err)));
   };
 
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function AdminUserProfilePage({ params }: Props) {
       await adminApi.setRoles(id, roles);
       reload(id);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 
@@ -59,7 +59,7 @@ export default function AdminUserProfilePage({ params }: Props) {
       const res = await adminApi.issueInvite(id);
       setInvite(res);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 
@@ -72,7 +72,7 @@ export default function AdminUserProfilePage({ params }: Props) {
       }
       reload(id);
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     }
   };
 

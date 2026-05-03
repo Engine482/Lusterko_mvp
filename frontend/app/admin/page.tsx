@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { adminApi } from "@/lib/api/admin";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Wireframes P0 §8.1 — Admin Dashboard.
 export default function AdminDashboardPage() {
@@ -31,7 +31,7 @@ export default function AdminDashboardPage() {
           units: units.items.length,
         }),
       )
-      .catch((err) => setError(describeError(err)));
+      .catch((err) => setError(humanError(err)));
   }, []);
 
   return (

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 
 import { authApi } from "@/lib/api/auth";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 // Surfaces a logout affordance whenever there is an active session.
 // Owns its own /me check so it can hide when no session is present
@@ -37,7 +37,7 @@ export function LogoutButton() {
     try {
       await authApi.logout();
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
       setSubmitting(false);
       return;
     }

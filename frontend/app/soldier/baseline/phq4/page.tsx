@@ -5,7 +5,7 @@ import { useState } from "react";
 import { BaselineProgress } from "@/components/BaselineProgress";
 import { LikertScale } from "@/components/LikertScale";
 import { soldierApi } from "@/lib/api/soldier";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 
 const QUESTIONS = [
   "Відчуття пригніченості або безнадії",
@@ -39,7 +39,7 @@ export default function BaselinePhq4Page() {
       await soldierApi.submitPhq4(answers as number[]);
       window.location.assign("/soldier/baseline/pss4");
     } catch (err) {
-      setError(describeError(err));
+      setError(humanError(err));
     } finally {
       setBusy(false);
     }

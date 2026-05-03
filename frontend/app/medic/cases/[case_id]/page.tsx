@@ -4,7 +4,7 @@ import Link from "next/link";
 import { use, useEffect, useState } from "react";
 
 import { medicApi, type MedicCaseDetail } from "@/lib/api/medic";
-import { describeError } from "@/lib/api/utils";
+import { humanError } from "@/lib/api/messages";
 import type { CaseStatus } from "@/types/enums";
 
 const CASE_LABEL: Record<CaseStatus, string> = {
@@ -41,7 +41,7 @@ export default function MedicCaseDetailPage({
         setStatusDraft(res.case_status);
       })
       .catch((err) => {
-        if (!cancelled) setError(describeError(err));
+        if (!cancelled) setError(humanError(err));
       });
     return () => {
       cancelled = true;
@@ -61,7 +61,7 @@ export default function MedicCaseDetailPage({
       setActionMsg("Статус оновлено.");
       setReload((n) => n + 1);
     } catch (err) {
-      setActionMsg(describeError(err));
+      setActionMsg(humanError(err));
     } finally {
       setBusy(false);
     }
@@ -78,7 +78,7 @@ export default function MedicCaseDetailPage({
       setActionMsg("Нотатку додано.");
       setReload((n) => n + 1);
     } catch (err) {
-      setActionMsg(describeError(err));
+      setActionMsg(humanError(err));
     } finally {
       setBusy(false);
     }
