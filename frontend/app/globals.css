@@ -2,6 +2,22 @@
   color-scheme: light dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, sans-serif;
+  --tap-target: 44px;
+  --page-max: 1200px;
+  --form-max: 480px;
+  --page-pad-x: 16px;
+}
+
+@media (min-width: 600px) {
+  :root {
+    --page-pad-x: 24px;
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --page-pad-x: 32px;
+  }
 }
 
 * {
@@ -15,6 +31,12 @@ body {
   min-height: 100%;
 }
 
+body {
+  /* iOS Safari boosts <16px form text — pin base to 16px so login/settings
+     inputs never auto-zoom on focus. */
+  font-size: 16px;
+}
+
 .app-shell {
   display: flex;
   flex-direction: column;
@@ -22,36 +44,41 @@ body {
 }
 
 .app-shell__header {
-  padding: 12px 16px;
+  padding: 12px var(--page-pad-x);
   border-bottom: 1px solid rgba(0, 0, 0, 0.08);
   font-weight: 600;
-}
-
-.app-shell__main {
-  padding: 16px;
-  flex: 1;
-}
-
-.app-shell__header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.app-shell__main {
+  padding: 16px var(--page-pad-x) 24px;
+  flex: 1;
+  width: 100%;
+  max-width: var(--page-max);
+  margin: 0 auto;
 }
 
 .app-shell__user-area {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .settings-link {
   text-decoration: none;
   color: inherit;
   border: 1px solid rgba(0, 0, 0, 0.15);
-  padding: 6px 10px;
-  border-radius: 4px;
+  padding: 10px 14px;
+  border-radius: 6px;
   font: inherit;
+  min-height: var(--tap-target);
+  display: inline-flex;
+  align-items: center;
 }
 
 .settings-link:hover,
@@ -62,10 +89,11 @@ body {
 .logout-button {
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: transparent;
-  padding: 6px 10px;
+  padding: 10px 14px;
   cursor: pointer;
   font: inherit;
-  border-radius: 4px;
+  border-radius: 6px;
+  min-height: var(--tap-target);
 }
 
 .logout-button:disabled {
@@ -83,14 +111,18 @@ body {
   display: flex;
   gap: 12px;
   margin: 12px 0 24px;
+  flex-wrap: wrap;
 }
 
 .settings__nav a {
   text-decoration: none;
   color: inherit;
   border: 1px solid rgba(0, 0, 0, 0.15);
-  padding: 6px 12px;
-  border-radius: 4px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  min-height: var(--tap-target);
+  display: inline-flex;
+  align-items: center;
 }
 
 .settings__nav a:hover,
@@ -114,10 +146,11 @@ body {
 .role-switcher__menu button {
   border: 1px solid rgba(0, 0, 0, 0.15);
   background: transparent;
-  padding: 6px 10px;
+  padding: 10px 14px;
   cursor: pointer;
   font: inherit;
-  border-radius: 4px;
+  border-radius: 6px;
+  min-height: var(--tap-target);
 }
 
 .role-switcher__menu {
@@ -133,7 +166,8 @@ body {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  min-width: 180px;
+  min-width: 200px;
+  z-index: 10;
 }
 
 .role-switcher__menu button {
@@ -149,7 +183,7 @@ body {
 .form-grid {
   display: grid;
   gap: 12px;
-  max-width: 480px;
+  max-width: var(--form-max);
 }
 
 .form-grid label {
@@ -161,20 +195,22 @@ body {
 
 .form-grid input,
 .form-grid select {
-  padding: 6px 8px;
+  padding: 10px 12px;
   border: 1px solid rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
+  border-radius: 6px;
   font: inherit;
+  min-height: var(--tap-target);
 }
 
 .btn {
-  padding: 8px 14px;
+  padding: 10px 18px;
   border: 0;
   background: #1a73e8;
   color: white;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
   font: inherit;
+  min-height: var(--tap-target);
 }
 
 .btn--ghost {
@@ -204,6 +240,12 @@ body {
   color: #1a73e8;
 }
 
+.table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;
@@ -223,9 +265,17 @@ body {
   flex-wrap: wrap;
 }
 
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
 .kpi-card {
   padding: 12px 16px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   border-radius: 6px;
-  min-width: 160px;
+  min-width: 0;
 }

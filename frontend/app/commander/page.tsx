@@ -67,7 +67,7 @@ export default function CommanderDashboardPage() {
         </div>
       )}
 
-      <ul style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, padding: 0, listStyle: "none" }}>
+      <ul className="kpi-grid">
         {(Object.keys(STATUS_LABEL) as RiskStatus[]).map((s) => (
           <li
             key={s}

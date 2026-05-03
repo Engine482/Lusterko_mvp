@@ -37,32 +37,34 @@ export default function AdminAuditPage() {
         />
       </div>
       {error && <div className="alert alert--error">{error}</div>}
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Час</th>
-            <th>Подія</th>
-            <th>Actor</th>
-            <th>Target</th>
-            <th>Деталі</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((row) => (
-            <tr key={row.id}>
-              <td>{new Date(row.created_at).toLocaleString()}</td>
-              <td>{row.event_type}</td>
-              <td>{row.actor_user_id ?? "—"}</td>
-              <td>{row.target_user_id ?? "—"}</td>
-              <td>
-                <code style={{ fontSize: "0.75rem" }}>
-                  {JSON.stringify(row.metadata_json)}
-                </code>
-              </td>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Час</th>
+              <th>Подія</th>
+              <th>Actor</th>
+              <th>Target</th>
+              <th>Деталі</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((row) => (
+              <tr key={row.id}>
+                <td>{new Date(row.created_at).toLocaleString()}</td>
+                <td>{row.event_type}</td>
+                <td>{row.actor_user_id ?? "—"}</td>
+                <td>{row.target_user_id ?? "—"}</td>
+                <td>
+                  <code style={{ fontSize: "0.75rem", overflowWrap: "anywhere" }}>
+                    {JSON.stringify(row.metadata_json)}
+                  </code>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }

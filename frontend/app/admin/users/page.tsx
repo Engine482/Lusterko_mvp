@@ -42,7 +42,7 @@ export default function AdminUsersPage() {
   return (
     <section>
       <h1>Користувачі</h1>
-      <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 12, flexWrap: "wrap" }}>
         <select
           value={filterStatus}
           onChange={(e) => setFilterStatus(e.target.value as UserStatus | "")}
@@ -70,30 +70,32 @@ export default function AdminUsersPage() {
         </Link>
       </div>
       {error && <div className="alert alert--error">{error}</div>}
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Ім&apos;я</th>
-            <th>Email</th>
-            <th>Ролі</th>
-            <th>Статус</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((u) => (
-            <tr key={u.id}>
-              <td>{u.full_name}</td>
-              <td>{u.email}</td>
-              <td>{u.roles.join(", ")}</td>
-              <td>{u.status}</td>
-              <td>
-                <Link href={`/admin/users/${u.id}`}>Відкрити</Link>
-              </td>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Ім&apos;я</th>
+              <th>Email</th>
+              <th>Ролі</th>
+              <th>Статус</th>
+              <th></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((u) => (
+              <tr key={u.id}>
+                <td>{u.full_name}</td>
+                <td>{u.email}</td>
+                <td>{u.roles.join(", ")}</td>
+                <td>{u.status}</td>
+                <td>
+                  <Link href={`/admin/users/${u.id}`}>Відкрити</Link>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
       <p style={{ fontSize: "0.875rem", marginTop: 8 }}>Всього: {total}</p>
     </section>
   );

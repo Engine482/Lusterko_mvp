@@ -75,28 +75,30 @@ export default function CommanderCasesPage() {
       {cases === null && <p style={{ marginTop: 12 }}>Завантаження…</p>}
       {cases && cases.length === 0 && <p style={{ marginTop: 12 }}>Немає кейсів.</p>}
       {cases && cases.length > 0 && (
-        <table style={{ width: "100%", marginTop: 12, borderCollapse: "collapse" }}>
-          <thead>
-            <tr>
-              <th style={{ textAlign: "left" }}>Боєць</th>
-              <th style={{ textAlign: "left" }}>Статус</th>
-              <th style={{ textAlign: "left" }}>Останній daily</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {cases.map((c) => (
-              <tr key={c.user_id}>
-                <td>{c.full_name}</td>
-                <td>{STATUS_LABEL[c.current_risk_status]}</td>
-                <td>{c.last_daily_at ? new Date(c.last_daily_at).toLocaleString("uk-UA") : "—"}</td>
-                <td>
-                  <Link href={`/commander/cases/${c.user_id}`}>Відкрити</Link>
-                </td>
+        <div className="table-wrap" style={{ marginTop: 12 }}>
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Боєць</th>
+                <th>Статус</th>
+                <th>Останній daily</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {cases.map((c) => (
+                <tr key={c.user_id}>
+                  <td>{c.full_name}</td>
+                  <td>{STATUS_LABEL[c.current_risk_status]}</td>
+                  <td>{c.last_daily_at ? new Date(c.last_daily_at).toLocaleString("uk-UA") : "—"}</td>
+                  <td>
+                    <Link href={`/commander/cases/${c.user_id}`}>Відкрити</Link>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

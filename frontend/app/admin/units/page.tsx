@@ -63,22 +63,24 @@ export default function AdminUnitsPage() {
           Додати підрозділ
         </button>
       </form>
-      <table className="table">
-        <thead>
-          <tr>
-            <th>Назва</th>
-            <th>Код</th>
-          </tr>
-        </thead>
-        <tbody>
-          {items.map((u) => (
-            <tr key={u.id}>
-              <td>{u.name}</td>
-              <td>{u.code ?? "—"}</td>
+      <div className="table-wrap">
+        <table className="table">
+          <thead>
+            <tr>
+              <th>Назва</th>
+              <th>Код</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {items.map((u) => (
+              <tr key={u.id}>
+                <td>{u.name}</td>
+                <td>{u.code ?? "—"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </section>
   );
 }
