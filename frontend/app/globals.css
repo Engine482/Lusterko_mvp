@@ -39,6 +39,32 @@ body {
   gap: 16px;
 }
 
+.app-shell__user-area {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.logout-button {
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  background: transparent;
+  padding: 6px 10px;
+  cursor: pointer;
+  font: inherit;
+  border-radius: 4px;
+}
+
+.logout-button:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.logout-button__error {
+  color: #b00020;
+  font-size: 0.875rem;
+  margin-left: 8px;
+}
+
 .role-switcher {
   position: relative;
 }

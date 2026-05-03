@@ -49,7 +49,11 @@ export function ReactionTest({ onComplete }: Props) {
   };
 
   const handleClick = () => {
-    if (phase === "instructions" || phase === "done") return;
+    if (phase === "done") return;
+    if (phase === "instructions" || phase === "too_early") {
+      startTrial();
+      return;
+    }
     if (phase === "waiting") {
       cleanupTimer();
       setPhase("too_early");
@@ -68,25 +72,48 @@ export function ReactionTest({ onComplete }: Props) {
         setTrial(nextTrial);
         setPhase("instructions");
       }
-    } else if (phase === "too_early") {
-      setPhase("instructions");
     }
   };
 
   if (phase === "done") {
     return (
-      <div className="kpi-card">
+      <div className="kpi-card" role="status">
         <strong>Тест завершено</strong>
         <div>Медіана: {median(reactions)} мс • {reactions.length} спроб</div>
       </div>
     );
   }
 
+  const label =
+    phase === "instructions"
+      ? trial === 0
+        ? `Почати — спроба 1 з ${TRIALS}`
+        : `Далі — спроба ${trial + 1} з ${TRIALS}`
+      : phase === "waiting"
+        ? "Чекайте…"
+        : phase === "ready"
+          ? "Натисніть!"
+          : "Зарано — натисніть, щоб повторити";
+
+  const ariaHint =
+    phase === "instructions"
+      ? "Натискайте, як тільки поле стане синім."
+      : phase === "ready"
+        ? "Стимул показано — натисніть зараз."
+        : phase === "waiting"
+          ? "Очікування стимулу. Не натискайте, доки поле не стане синім."
+          : "Передчасне натискання. Натисніть, щоб повторити спробу.";
+
   return (
-    <div
+    <button
+      type="button"
       onClick={handleClick}
+      aria-live="polite"
+      aria-label={ariaHint}
       style={{
-        height: 240,
+        width: "100%",
+        minHeight: 240,
+        border: "none",
         borderRadius: 8,
         background:
           phase === "ready"
@@ -101,14 +128,12 @@ export function ReactionTest({ onComplete }: Props) {
         fontSize: "1.25rem",
         cursor: "pointer",
         userSelect: "none",
+        padding: 16,
+        touchAction: "manipulation",
+        font: "inherit",
       }}
     >
-      {phase === "instructions" && (
-        <span>Натисніть, коли поле стане синім. Спроба {trial + 1}/{TRIALS}.</span>
-      )}
-      {phase === "waiting" && <span>Чекайте…</span>}
-      {phase === "ready" && <span>Натисніть!</span>}
-      {phase === "too_early" && <span>Зарано — натисніть, щоб повторити.</span>}
-    </div>
+      {label}
+    </button>
   );
 }
