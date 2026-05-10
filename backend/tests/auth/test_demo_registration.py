@@ -304,3 +304,77 @@ def test_demo_register_start_existing_user_reports_sent_for_anti_enumeration(
     body = res.json()["data"]
     assert body["queued"] is True
     assert body["email_dispatch"] == "sent"
+
+
+def test_demo_register_confirm_links_user_to_demo_unit(
+    client: TestClient, monkeypatch
+) -> None:
+    """P0.5: a tester who self-registers must be attached to the seeded
+    `Демо-взвод` so the commander dashboard and medic queue render data
+    on first login. Without the link the dashboards are silently empty
+    because both endpoints scope reads by `users.unit_id`."""
+
+    from app.models.unit import Unit
+
+    _enable_open_registration(monkeypatch)
+    stub = _stub_mailer()
+
+    # Stand up the demo unit the way the seed script does.
+    with SessionLocal() as db:
+        demo_unit = Unit(name="Демо-взвод", is_active=True)
+        db.add(demo_unit)
+        db.commit()
+        demo_unit_id = demo_unit.id
+
+    client.post(
+        "/api/v1/auth/demo/register/start",
+        json={"email": "linked@tester.lusterko.io"},
+    )
+    token = _last_demo_token(stub)
+    res = client.post(
+        "/api/v1/auth/demo/register/confirm",
+        json={
+            "token": token,
+            "full_name": "Linked Tester",
+            "password": GOOD_PASSWORD,
+        },
+    )
+    assert res.status_code == 200, res.text
+
+    with SessionLocal() as db:
+        user = db.execute(
+            select(User).where(User.email == "linked@tester.lusterko.io")
+        ).scalar_one()
+        assert user.unit_id == demo_unit_id
+
+
+def test_demo_register_confirm_without_demo_unit_leaves_unit_null(
+    client: TestClient, monkeypatch
+) -> None:
+    """If the seed has not run on this environment, the user is still
+    created — just without a unit. The dashboards stay empty rather than
+    crash; operators can wire the user up later."""
+
+    _enable_open_registration(monkeypatch)
+    stub = _stub_mailer()
+
+    client.post(
+        "/api/v1/auth/demo/register/start",
+        json={"email": "no-unit@tester.lusterko.io"},
+    )
+    token = _last_demo_token(stub)
+    res = client.post(
+        "/api/v1/auth/demo/register/confirm",
+        json={
+            "token": token,
+            "full_name": "No Unit Tester",
+            "password": GOOD_PASSWORD,
+        },
+    )
+    assert res.status_code == 200, res.text
+
+    with SessionLocal() as db:
+        user = db.execute(
+            select(User).where(User.email == "no-unit@tester.lusterko.io")
+        ).scalar_one()
+        assert user.unit_id is None

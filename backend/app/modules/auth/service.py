@@ -33,12 +33,19 @@ from app.core.security import (
 from app.models.auth_invite import AuthInvite
 from app.models.demo_registration import DemoRegistration
 from app.models.password_reset_token import PasswordResetToken
+from app.models.unit import Unit
 from app.models.user import User
 from app.models.user_role import UserRole
 from app.models.user_session import UserSession
 from app.services.audit_logger import log_event
 
 DEMO_OPEN_REG_ROLES: tuple[Role, ...] = ("soldier", "commander", "medic_psych")
+# Name must match `scripts/seed_demo_unit.py::UNIT_NAME`. Demo-registered
+# testers are auto-attached to this unit so the commander dashboard and
+# the medic case queue render against the seeded platoon. If the unit is
+# missing (e.g. the seed has not run on this environment), `unit_id` is
+# left null and the dashboards stay empty rather than crash.
+DEMO_UNIT_NAME = "Демо-взвод"
 
 
 # --- Invite lifecycle --------------------------------------------------------
@@ -591,11 +598,19 @@ def complete_demo_registration(
     except PasswordPolicyError as err:
         raise AuthError("WEAK_PASSWORD", str(err)) from err
 
+    # Tie the tester to the seeded `Демо-взвод` so the commander dashboard
+    # and medic queue render against real data on first login. Falls back
+    # to null if the seed has not been run on this environment.
+    demo_unit_id = db.execute(
+        select(Unit.id).where(Unit.name == DEMO_UNIT_NAME)
+    ).scalar_one_or_none()
+
     user = User(
         email=registration.email,
         full_name=cleaned_name,
         status="active",
         password_hash=password_hash_value,
+        unit_id=demo_unit_id,
     )
     db.add(user)
     db.flush()
@@ -614,7 +629,11 @@ def complete_demo_registration(
         target_user_id=user.id,
         entity_type="demo_registrations",
         entity_id=registration.id,
-        metadata={"email": user.email, "roles": list(DEMO_OPEN_REG_ROLES)},
+        metadata={
+            "email": user.email,
+            "roles": list(DEMO_OPEN_REG_ROLES),
+            "unit_id": str(user.unit_id) if user.unit_id else None,
+        },
     )
     return user
 
