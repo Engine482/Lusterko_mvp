@@ -15,6 +15,10 @@ const HOME_PATH: Record<Role, string> = {
   admin: "/admin",
 };
 
+export function getHomeRouteForRole(role: Role | null): string {
+  return role ? HOME_PATH[role] : "/";
+}
+
 export function AppNav() {
   const [me, setMe] = useState<AuthMe | null>(null);
   const [open, setOpen] = useState(false);
@@ -40,33 +44,21 @@ export function AppNav() {
 
   useEffect(() => {
     if (!open) return;
-    const onClick = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (
-        menuRef.current?.contains(target) ||
-        buttonRef.current?.contains(target)
-      ) {
-        return;
-      }
-      setOpen(false);
-    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setOpen(false);
         buttonRef.current?.focus();
       }
     };
-    document.addEventListener("mousedown", onClick);
     document.addEventListener("keydown", onKey);
     return () => {
-      document.removeEventListener("mousedown", onClick);
       document.removeEventListener("keydown", onKey);
     };
   }, [open]);
 
   if (!me) return null;
 
-  const home = me.active_role ? HOME_PATH[me.active_role] : "/";
+  const home = getHomeRouteForRole(me.active_role);
   const multiRole = me.roles.length > 1;
   const activeRoleLabel = me.active_role ? ROLE_LABEL[me.active_role] : "—";
 
@@ -109,48 +101,69 @@ export function AppNav() {
         </span>
       </button>
       {open && (
-        <div
-          ref={menuRef}
-          id="app-nav-menu"
-          className="app-nav__menu"
-          role="menu"
-        >
-          <Link className="app-nav__item" role="menuitem" href={home} onClick={close}>
-            Головна
-          </Link>
-          <Link
-            className="app-nav__item"
-            role="menuitem"
-            href="/settings/profile"
+        <>
+          <div
+            className="app-nav__backdrop"
+            aria-hidden="true"
             onClick={close}
+          />
+          <div
+            ref={menuRef}
+            id="app-nav-menu"
+            className="app-nav__menu"
+            role="menu"
+            aria-label="Меню навігації"
           >
-            Налаштування
-          </Link>
-          {multiRole && (
+            <button
+              type="button"
+              className="app-nav__close"
+              onClick={close}
+              aria-label="Закрити меню"
+            >
+              ✕
+            </button>
             <Link
               className="app-nav__item"
               role="menuitem"
-              href="/role"
+              href={home}
               onClick={close}
             >
-              Змінити роль
+              Головна
             </Link>
-          )}
-          <button
-            type="button"
-            role="menuitem"
-            className="app-nav__item app-nav__item--danger"
-            onClick={logout}
-            disabled={submitting}
-          >
-            {submitting ? "Вихід…" : "Вийти"}
-          </button>
-          {error && (
-            <span className="app-nav__error" role="alert">
-              {error}
-            </span>
-          )}
-        </div>
+            <Link
+              className="app-nav__item"
+              role="menuitem"
+              href="/settings/profile"
+              onClick={close}
+            >
+              Налаштування
+            </Link>
+            {multiRole && (
+              <Link
+                className="app-nav__item"
+                role="menuitem"
+                href="/role"
+                onClick={close}
+              >
+                Змінити роль
+              </Link>
+            )}
+            <button
+              type="button"
+              role="menuitem"
+              className="app-nav__item app-nav__item--danger"
+              onClick={logout}
+              disabled={submitting}
+            >
+              {submitting ? "Вихід…" : "Вийти"}
+            </button>
+            {error && (
+              <span className="app-nav__error" role="alert">
+                {error}
+              </span>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
