@@ -10,23 +10,40 @@ import { EmptyState, LoadingState } from "@/components/UiState";
 import type { CaseStatus, RiskStatus } from "@/types/enums";
 
 type RiskFilter = RiskStatus | "all";
-type CaseFilter = CaseStatus | "open";
+type CaseTab = "priority" | "in_review" | "closed";
 
-const RISK_FILTERS: RiskFilter[] = ["all", "red", "yellow", "insufficient_data", "green"];
-const CASE_FILTERS: CaseFilter[] = ["open", "new", "in_review", "monitoring", "closed"];
+const RISK_FILTERS: RiskFilter[] = [
+  "all",
+  "red",
+  "yellow",
+  "insufficient_data",
+  "green",
+];
 
-// Wireframes P0 §7.1 — Medic Priority Cases List.
+const CASE_TABS: { key: CaseTab; label: string; backendStatus: CaseStatus }[] = [
+  { key: "priority", label: "Пріоритетні", backendStatus: "new" },
+  { key: "in_review", label: "В роботі", backendStatus: "in_review" },
+  { key: "closed", label: "Закриті", backendStatus: "closed" },
+];
+
+function riskFilterLabel(value: RiskFilter): string {
+  if (value === "all") return "Усі рівні ризику";
+  return RISK_LABEL[value];
+}
+
 export default function MedicCasesListPage() {
   const [cases, setCases] = useState<MedicCaseRow[] | null>(null);
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
-  const [caseFilter, setCaseFilter] = useState<CaseFilter>("open");
+  const [tab, setTab] = useState<CaseTab>("priority");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setCases(null);
+    const status = CASE_TABS.find((t) => t.key === tab)!.backendStatus;
     medicApi
       .listCases({
-        case_status: caseFilter === "open" ? undefined : caseFilter,
+        case_status: status,
         risk: riskFilter === "all" ? undefined : riskFilter,
       })
       .then((res) => {
@@ -38,61 +55,73 @@ export default function MedicCasesListPage() {
     return () => {
       cancelled = true;
     };
-  }, [riskFilter, caseFilter]);
+  }, [riskFilter, tab]);
 
   if (error) return <div className="alert alert--error">{error}</div>;
 
   return (
     <section>
-      <h1>Пріоритетні кейси</h1>
-      <div className="stack" style={{ marginBottom: 16 }}>
-        <div className="row">
-          <span className="text-muted" style={{ alignSelf: "center" }}>Ризик:</span>
+      <h1>Кейси</h1>
+
+      <nav
+        className="case-tabs"
+        role="tablist"
+        aria-label="Статус кейсу"
+      >
+        {CASE_TABS.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            className="case-tab"
+            onClick={() => setTab(t.key)}
+          >
+            {t.label}
+          </button>
+        ))}
+      </nav>
+
+      <label className="case-filter">
+        <span>Ризик</span>
+        <select
+          value={riskFilter}
+          onChange={(e) => setRiskFilter(e.target.value as RiskFilter)}
+        >
           {RISK_FILTERS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              className="chip"
-              aria-pressed={riskFilter === f}
-              onClick={() => setRiskFilter(f)}
-            >
-              {f === "all" ? "Всі" : RISK_LABEL[f]}
-            </button>
+            <option key={f} value={f}>
+              {riskFilterLabel(f)}
+            </option>
           ))}
-        </div>
-        <div className="row">
-          <span className="text-muted" style={{ alignSelf: "center" }}>Кейс:</span>
-          {CASE_FILTERS.map((f) => (
-            <button
-              key={f}
-              type="button"
-              className="chip"
-              aria-pressed={caseFilter === f}
-              onClick={() => setCaseFilter(f)}
-            >
-              {f === "open" ? "Відкриті" : CASE_STATUS_LABEL[f]}
-            </button>
-          ))}
-        </div>
-      </div>
+        </select>
+      </label>
 
       {cases === null && <LoadingState />}
       {cases && cases.length === 0 && (
         <EmptyState
-          title="Жодного активного кейсу"
-          hint="Підберіть інший фільтр ризику або статус кейсу."
+          title="Жодного кейсу за обраними фільтрами"
+          hint="Спробуйте інший статус або рівень ризику."
         />
       )}
       {cases && cases.length > 0 && (
         <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
           {cases.map((c) => (
             <li key={c.case_id} className="kpi-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: 8,
+                  flexWrap: "wrap",
+                }}
+              >
                 <strong>{c.full_name}</strong>
                 <span>{RISK_LABEL[c.current_risk_status]}</span>
               </div>
               <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
-                Статус кейсу: {CASE_STATUS_LABEL[c.case_status]} · відкрито {new Date(c.opened_at).toLocaleString("uk-UA")}
+                Статус кейсу: {CASE_STATUS_LABEL[c.case_status]} · відкрито{" "}
+                {new Date(c.opened_at).toLocaleString("uk-UA")}
               </div>
               <Link
                 style={{ marginTop: 8, display: "inline-block" }}

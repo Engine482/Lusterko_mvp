@@ -13,6 +13,7 @@ from app.models.case_review import CaseReview
 from app.models.case_review_note import CaseReviewNote
 from app.models.comment_ai_analysis import CommentAiAnalysis
 from app.models.daily_checkin import DailyCheckin
+from app.models.demo_registration import DemoRegistration
 from app.models.go_no_go_test import GoNoGoTest
 from app.models.password_reset_token import PasswordResetToken
 from app.models.reaction_test import ReactionTest
@@ -36,6 +37,7 @@ __all__ = [
     "CaseReviewNote",
     "CommentAiAnalysis",
     "DailyCheckin",
+    "DemoRegistration",
     "GoNoGoTest",
     "PasswordResetToken",
     "ReactionTest",

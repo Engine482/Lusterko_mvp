@@ -45,6 +45,13 @@ class PasswordResetEmail:
 
 
 @dataclass(frozen=True)
+class DemoRegistrationEmail:
+    to_email: str
+    confirm_url: str
+    expires_at_iso: str
+
+
+@dataclass(frozen=True)
 class SendResult:
     ok: bool
     error: str | None = None
@@ -55,6 +62,7 @@ class Mailer(Protocol):
 
     def send_invite(self, msg: InviteEmail) -> SendResult: ...
     def send_password_reset(self, msg: PasswordResetEmail) -> SendResult: ...
+    def send_demo_registration(self, msg: DemoRegistrationEmail) -> SendResult: ...
 
 
 # --- Templating -------------------------------------------------------------
@@ -130,6 +138,68 @@ _RESET_HTML = """\
 """
 
 
+_DEMO_REG_SUBJECT = "Підтвердіть реєстрацію в Lusterko (demo)"
+
+_DEMO_REG_PLAINTEXT = """\
+Вітаємо!
+
+Ми отримали запит на реєстрацію в demo-режимі Lusterko (моніторинг
+психологічного стану особового складу).
+
+Щоб задати пароль і завершити створення тестового акаунта, перейдіть за
+посиланням:
+{confirm_url}
+
+Посилання дійсне до {expires_at}.
+
+Якщо ви не запитували реєстрацію — просто проігноруйте цей лист.
+
+— Команда Lusterko
+"""
+
+_DEMO_REG_HTML = """\
+<!doctype html>
+<html lang="uk">
+<body style="font-family: -apple-system, Arial, sans-serif; line-height: 1.5;">
+  <p>Вітаємо!</p>
+  <p>Ми отримали запит на реєстрацію в demo-режимі <b>Lusterko</b>
+  (моніторинг психологічного стану особового складу).</p>
+  <p>Щоб задати пароль і завершити створення тестового акаунта, перейдіть
+  за посиланням:</p>
+  <p><a href="{confirm_url}">{confirm_url}</a></p>
+  <p style="color:#666; font-size: 13px;">Посилання дійсне до {expires_at}.</p>
+  <p style="color:#666; font-size: 13px;">
+    Якщо ви не запитували реєстрацію — просто проігноруйте цей лист.
+  </p>
+  <p>— Команда Lusterko</p>
+</body>
+</html>
+"""
+
+
+def _build_demo_registration_message(
+    msg: DemoRegistrationEmail, *, from_email: str
+) -> EmailMessage:
+    em = EmailMessage()
+    em["Subject"] = _DEMO_REG_SUBJECT
+    em["From"] = from_email
+    em["To"] = msg.to_email
+    em.set_content(
+        _DEMO_REG_PLAINTEXT.format(
+            confirm_url=msg.confirm_url,
+            expires_at=msg.expires_at_iso,
+        )
+    )
+    em.add_alternative(
+        _DEMO_REG_HTML.format(
+            confirm_url=msg.confirm_url,
+            expires_at=msg.expires_at_iso,
+        ),
+        subtype="html",
+    )
+    return em
+
+
 def _build_invite_message(msg: InviteEmail, *, from_email: str) -> EmailMessage:
     em = EmailMessage()
     em["Subject"] = _INVITE_SUBJECT
@@ -186,6 +256,7 @@ class StubMailer:
     name: str = "stub"
     sent_invites: list[InviteEmail] = field(default_factory=list)
     sent_resets: list[PasswordResetEmail] = field(default_factory=list)
+    sent_demo_registrations: list[DemoRegistrationEmail] = field(default_factory=list)
 
     def send_invite(self, msg: InviteEmail) -> SendResult:
         self.sent_invites.append(msg)
@@ -200,6 +271,14 @@ class StubMailer:
         logger.info(
             "password_reset_email_stub_sent",
             extra={"to": msg.to_email, "reset_url": msg.reset_url},
+        )
+        return SendResult(ok=True)
+
+    def send_demo_registration(self, msg: DemoRegistrationEmail) -> SendResult:
+        self.sent_demo_registrations.append(msg)
+        logger.info(
+            "demo_registration_email_stub_sent",
+            extra={"to": msg.to_email, "confirm_url": msg.confirm_url},
         )
         return SendResult(ok=True)
 
@@ -239,6 +318,12 @@ class SmtpMailer:
     def send_password_reset(self, msg: PasswordResetEmail) -> SendResult:
         em = _build_reset_message(msg, from_email=self.from_email or self.username)
         return self._send(em, msg.to_email, kind="password_reset")
+
+    def send_demo_registration(self, msg: DemoRegistrationEmail) -> SendResult:
+        em = _build_demo_registration_message(
+            msg, from_email=self.from_email or self.username
+        )
+        return self._send(em, msg.to_email, kind="demo_registration")
 
 
 # --- Selection --------------------------------------------------------------
@@ -286,3 +371,7 @@ def build_invite_url(base_url: str, token: str) -> str:
 
 def build_password_reset_url(base_url: str, token: str) -> str:
     return f"{base_url.rstrip('/')}/reset-password?token={token}"
+
+
+def build_demo_registration_url(base_url: str, token: str) -> str:
+    return f"{base_url.rstrip('/')}/register/confirm?token={token}"

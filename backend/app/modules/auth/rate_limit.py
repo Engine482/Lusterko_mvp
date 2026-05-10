@@ -148,3 +148,11 @@ def password_forgot_key(*, ip: str | None, email: str) -> str:
 
 def password_reset_key(*, ip: str | None) -> str:
     return f"reset:{ip or 'unknown'}"
+
+
+def demo_register_start_key(*, ip: str | None, email: str) -> str:
+    return f"demoreg-start:{ip or 'unknown'}:{email.lower()}"
+
+
+def demo_register_confirm_key(*, ip: str | None) -> str:
+    return f"demoreg-confirm:{ip or 'unknown'}"

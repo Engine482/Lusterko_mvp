@@ -53,4 +53,20 @@ export const authApi = {
       method: "PATCH",
       body: { full_name },
     }),
+  config: () =>
+    apiCall<{ open_registration_enabled: boolean }>("/api/v1/auth/config"),
+  demoRegisterStart: (email: string) =>
+    apiCall<{ queued: boolean }>("/api/v1/auth/demo/register/start", {
+      method: "POST",
+      body: { email },
+    }),
+  demoRegisterConfirm: (input: {
+    token: string;
+    full_name: string;
+    password: string;
+  }) =>
+    apiCall<{ registered: boolean }>("/api/v1/auth/demo/register/confirm", {
+      method: "POST",
+      body: input,
+    }),
 };

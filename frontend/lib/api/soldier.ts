@@ -27,6 +27,11 @@ export type CompletionSummary = {
   daily_due: boolean;
   weekly_due: boolean;
   cognitive_due: boolean;
+  reaction_test_due: boolean;
+  go_no_go_due: boolean;
+  daily_next_due_at: string | null;
+  weekly_next_due_at: string | null;
+  cognitive_next_due_at: string | null;
   last_risk_status: RiskStatus | null;
 };
 

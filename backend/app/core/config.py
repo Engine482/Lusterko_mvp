@@ -12,6 +12,7 @@ class Settings:
     backend_host: str
     backend_port: int
     app_public_base_url: str
+    demo_open_registration: bool
 
     @property
     def is_test(self) -> bool:
@@ -25,6 +26,13 @@ def _required(name: str, default: str | None = None) -> str:
     return value
 
 
+def _bool_env(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in ("1", "true", "yes", "on")
+
+
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     return Settings(
@@ -36,4 +44,5 @@ def get_settings() -> Settings:
         backend_host=os.environ.get("BACKEND_HOST", "127.0.0.1"),
         backend_port=int(os.environ.get("BACKEND_PORT", "8001")),
         app_public_base_url=os.environ.get("APP_PUBLIC_BASE_URL", "http://localhost:3001"),
+        demo_open_registration=_bool_env("DEMO_OPEN_REGISTRATION", default=False),
     )

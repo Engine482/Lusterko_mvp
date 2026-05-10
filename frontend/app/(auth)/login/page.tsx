@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { RegisterCta } from "@/components/RegisterCta";
 import { authApi } from "@/lib/api/auth";
 import { humanError } from "@/lib/api/messages";
 
@@ -70,6 +71,7 @@ export default function LoginPage() {
       <p style={{ marginTop: 24 }}>
         <a href="/forgot-password">Забули пароль?</a>
       </p>
+      <RegisterCta variant="link" />
       <div className="disclaimer">
         Демо-версія. Дані використовуються лише для демонстрації MVP. Система не
         є медичним діагностичним інструментом.

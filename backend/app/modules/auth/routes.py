@@ -34,7 +34,12 @@ from app.modules.auth.dependencies import (
 from app.modules.notifications import mailer as mailer_mod
 from app.models.user import User
 from app.schemas.auth import (
+    AuthConfigResponse,
     AuthMeResponse,
+    DemoRegisterConfirmRequest,
+    DemoRegisterConfirmResponse,
+    DemoRegisterStartRequest,
+    DemoRegisterStartResponse,
     InviteAcceptRequest,
     InviteAcceptResponse,
     LoginRequest,
@@ -363,6 +368,139 @@ def password_change(
         return error_response(err.code, err.message)  # type: ignore[arg-type]
     db.commit()
     return success_response(PasswordChangeResponse(changed=True).model_dump())
+
+
+# --- Public config / demo open registration ---------------------------------
+
+
+@router.get("/config")
+def auth_config() -> Response:
+    """Public flag for the frontend to render the registration entry-point.
+    Lives under /auth so the existing API client already handles it."""
+
+    settings = get_settings()
+    return success_response(
+        AuthConfigResponse(
+            open_registration_enabled=settings.demo_open_registration,
+        ).model_dump()
+    )
+
+
+@router.post("/demo/register/start")
+def demo_register_start(
+    payload: DemoRegisterStartRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Begin open-demo registration. Anti-enumeration response shape (mirrors
+    `/password/forgot`): the envelope is always the same, regardless of
+    whether the email already belongs to an active user.
+
+    Gated by `DEMO_OPEN_REGISTRATION` — when the flag is off this endpoint
+    behaves as if registration is disabled and returns a generic envelope so
+    a turned-off demo doesn't surface as a 4xx in CI/UI."""
+
+    settings = get_settings()
+    if not settings.demo_open_registration:
+        return success_response(
+            DemoRegisterStartResponse(queued=True).model_dump()
+        )
+
+    ip = _client_ip(request)
+    key = rl.demo_register_start_key(ip=ip, email=payload.email)
+    try:
+        rl.check_lockout(db, key=key)
+    except auth_service.AuthError:
+        # Swallow lockouts into the generic envelope — same anti-enumeration
+        # rationale as /password/forgot.
+        db.commit()
+        return success_response(
+            DemoRegisterStartResponse(queued=True).model_dump()
+        )
+
+    rl.record_failure(db, key=key, ip_address=ip)
+
+    if not auth_service.email_belongs_to_active_user(db, email=payload.email):
+        issued = auth_service.start_demo_registration(db, email=payload.email)
+        confirm_url = mailer_mod.build_demo_registration_url(
+            settings.app_public_base_url, issued.token
+        )
+        result = mailer_mod.get_mailer().send_demo_registration(
+            mailer_mod.DemoRegistrationEmail(
+                to_email=issued.registration.email,
+                confirm_url=confirm_url,
+                expires_at_iso=issued.registration.expires_at.isoformat(),
+            )
+        )
+        log_event(
+            db,
+            event_type=(
+                "demo_registration_email_sent" if result.ok
+                else "demo_registration_email_failed"
+            ),
+            entity_type="demo_registrations",
+            entity_id=issued.registration.id,
+            metadata={"error": result.error} if result.error else None,
+        )
+
+    db.commit()
+    return success_response(DemoRegisterStartResponse(queued=True).model_dump())
+
+
+@router.post("/demo/register/confirm")
+def demo_register_confirm(
+    payload: DemoRegisterConfirmRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> Response:
+    """Finalize open-demo registration. Creates the user with three tester
+    roles (soldier + commander + medic_psych) and issues a session so the
+    tester lands logged in on the role-selection screen."""
+
+    settings = get_settings()
+    if not settings.demo_open_registration:
+        return error_response(
+            "DEMO_REGISTRATION_DISABLED",
+            "Demo open registration is disabled.",
+        )
+
+    ip = _client_ip(request)
+    key = rl.demo_register_confirm_key(ip=ip)
+    try:
+        rl.check_lockout(db, key=key)
+        registration = auth_service.validate_demo_registration_token(
+            db, token=payload.token
+        )
+        user = auth_service.complete_demo_registration(
+            db,
+            registration=registration,
+            password=payload.password,
+            full_name=payload.full_name,
+        )
+    except auth_service.AuthError as err:
+        if err.code not in ("ACCOUNT_LOCKED", "WEAK_PASSWORD"):
+            rl.record_failure(db, key=key, ip_address=ip)
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+
+    rl.record_success(db, key=key)
+    try:
+        issued = auth_service.create_session(
+            db,
+            user=user,
+            ip_address=ip,
+            user_agent=request.headers.get("user-agent"),
+        )
+    except auth_service.AuthError as err:
+        db.commit()
+        return error_response(err.code, err.message)  # type: ignore[arg-type]
+
+    db.commit()
+    response = success_response(
+        DemoRegisterConfirmResponse(registered=True).model_dump()
+    )
+    set_session_cookie(response, issued.token)
+    return response
 
 
 @router.patch("/me")

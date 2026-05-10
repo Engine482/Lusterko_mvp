@@ -17,7 +17,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.constants import Role
-from app.core.cookies import INVITE_TTL, PASSWORD_RESET_TTL, SESSION_TTL
+from app.core.cookies import (
+    DEMO_REGISTRATION_TTL,
+    INVITE_TTL,
+    PASSWORD_RESET_TTL,
+    SESSION_TTL,
+)
 from app.core.security import (
     PasswordPolicyError,
     generate_token,
@@ -26,11 +31,14 @@ from app.core.security import (
     verify_password,
 )
 from app.models.auth_invite import AuthInvite
+from app.models.demo_registration import DemoRegistration
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
 from app.models.user_role import UserRole
 from app.models.user_session import UserSession
 from app.services.audit_logger import log_event
+
+DEMO_OPEN_REG_ROLES: tuple[Role, ...] = ("soldier", "commander", "medic_psych")
 
 
 # --- Invite lifecycle --------------------------------------------------------
@@ -473,6 +481,145 @@ def change_password(
         metadata={"revoked_other_sessions": revoked},
     )
     return revoked
+
+
+# --- Demo open registration --------------------------------------------------
+
+
+@dataclass(frozen=True)
+class IssuedDemoRegistration:
+    registration: DemoRegistration
+    token: str  # plaintext for the email
+
+
+def _normalize_email(email: str) -> str:
+    return email.lower().strip()
+
+
+def email_belongs_to_active_user(db: Session, *, email: str) -> bool:
+    user = db.execute(
+        select(User).where(User.email == _normalize_email(email))
+    ).scalar_one_or_none()
+    return user is not None and user.status == "active"
+
+
+def start_demo_registration(
+    db: Session,
+    *,
+    email: str,
+    now: datetime | None = None,
+) -> IssuedDemoRegistration:
+    """Create a fresh pending registration. Caller is responsible for the
+    anti-enumeration policy: the route should NOT reveal whether the email
+    already corresponds to an existing user — but it should also not create
+    a token in that case (`email_belongs_to_active_user` guards that)."""
+
+    now = now or datetime.now(timezone.utc)
+    token = generate_token()
+    row = DemoRegistration(
+        email=_normalize_email(email),
+        token_hash=hash_token(token),
+        expires_at=now + DEMO_REGISTRATION_TTL,
+    )
+    db.add(row)
+    db.flush()
+    log_event(
+        db,
+        event_type="demo_registration_started",
+        entity_type="demo_registrations",
+        entity_id=row.id,
+        metadata={"email": row.email},
+    )
+    return IssuedDemoRegistration(registration=row, token=token)
+
+
+def validate_demo_registration_token(
+    db: Session,
+    *,
+    token: str,
+    now: datetime | None = None,
+) -> DemoRegistration:
+    now = now or datetime.now(timezone.utc)
+    row = db.execute(
+        select(DemoRegistration).where(
+            DemoRegistration.token_hash == hash_token(token)
+        )
+    ).scalar_one_or_none()
+    if row is None:
+        raise AuthError("INVALID_DEMO_TOKEN", "Registration token not found.")
+    if row.consumed_at is not None:
+        raise AuthError("INVALID_DEMO_TOKEN", "Registration token already used.")
+    if row.expires_at <= now:
+        raise AuthError("DEMO_TOKEN_EXPIRED", "Registration token expired.")
+    return row
+
+
+def complete_demo_registration(
+    db: Session,
+    *,
+    registration: DemoRegistration,
+    password: str,
+    full_name: str,
+    now: datetime | None = None,
+) -> User:
+    """Create the user with the three demo-tester roles and consume the
+    pending registration row. Caller issues the session.
+
+    If by the time the user clicks the link a `users` row with that email
+    has appeared (e.g. an admin issued an invite in parallel), refuse —
+    the open-reg path must not silently overwrite an invited account."""
+
+    now = now or datetime.now(timezone.utc)
+
+    existing = db.execute(
+        select(User).where(User.email == registration.email)
+    ).scalar_one_or_none()
+    if existing is not None:
+        raise AuthError(
+            "DEMO_EMAIL_TAKEN",
+            "Email already registered. Please log in or reset password.",
+        )
+
+    cleaned_name = full_name.strip()
+    if not cleaned_name:
+        raise AuthError("INVALID_PROFILE", "Display name cannot be empty.")
+    if len(cleaned_name) > 200:
+        raise AuthError("INVALID_PROFILE", "Display name is too long.")
+
+    try:
+        password_hash_value = hash_password(password)
+    except PasswordPolicyError as err:
+        raise AuthError("WEAK_PASSWORD", str(err)) from err
+
+    user = User(
+        email=registration.email,
+        full_name=cleaned_name,
+        status="active",
+        password_hash=password_hash_value,
+    )
+    db.add(user)
+    db.flush()
+
+    for role in DEMO_OPEN_REG_ROLES:
+        db.add(UserRole(user_id=user.id, role=role))
+    # Flush so create_session's _user_roles query sees the new rows
+    # (SessionLocal is autoflush=False).
+    db.flush()
+
+    registration.consumed_at = now
+    log_event(
+        db,
+        event_type="demo_registration_completed",
+        actor_user_id=user.id,
+        target_user_id=user.id,
+        entity_type="demo_registrations",
+        entity_id=registration.id,
+        metadata={"email": user.email, "roles": list(DEMO_OPEN_REG_ROLES)},
+    )
+    return user
+
+
+# --- Profile -----------------------------------------------------------------
 
 
 def update_profile(

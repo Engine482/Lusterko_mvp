@@ -1,3 +1,5 @@
+import { RegisterCta } from "@/components/RegisterCta";
+
 export default function HomePage() {
   return (
     <section>
@@ -11,6 +13,7 @@ export default function HomePage() {
           Увійти
         </a>
       </p>
+      <RegisterCta />
     </section>
   );
 }

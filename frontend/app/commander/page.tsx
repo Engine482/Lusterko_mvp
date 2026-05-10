@@ -13,6 +13,8 @@ import { RISK_LABEL } from "@/lib/labels";
 import { EmptyState, LoadingState } from "@/components/UiState";
 import type { RiskStatus } from "@/types/enums";
 
+type FilterValue = RiskStatus | "all";
+
 const STATUS_LABEL = RISK_LABEL;
 
 const STATUS_BG: Record<RiskStatus, string> = {
@@ -22,12 +24,14 @@ const STATUS_BG: Record<RiskStatus, string> = {
   insufficient_data: "var(--risk-unknown)",
 };
 
-type FilterValue = RiskStatus | "all";
-
 const FILTERS: FilterValue[] = ["all", "red", "yellow", "green", "insufficient_data"];
 
-// Wireframes P0 §6.1 — Commander Dashboard.
-export default function CommanderDashboardPage() {
+function filterLabel(value: FilterValue): string {
+  if (value === "all") return "Усі рівні ризику";
+  return STATUS_LABEL[value];
+}
+
+export default function CommanderUnitStatePage() {
   const [summary, setSummary] = useState<CommanderSummary | null>(null);
   const [cases, setCases] = useState<CommanderCaseRow[] | null>(null);
   const [filter, setFilter] = useState<FilterValue>("all");
@@ -81,33 +85,41 @@ export default function CommanderDashboardPage() {
         ))}
       </ul>
 
-      <div className="row" style={{ marginTop: 24 }}>
-        {FILTERS.map((f) => (
-          <button
-            key={f}
-            type="button"
-            className="chip"
-            aria-pressed={filter === f}
-            onClick={() => setFilter(f)}
-          >
-            {f === "all" ? "Всі" : STATUS_LABEL[f]}
-          </button>
-        ))}
-      </div>
+      <label className="case-filter" style={{ marginTop: 24 }}>
+        <span>Ризик</span>
+        <select
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as FilterValue)}
+        >
+          {FILTERS.map((f) => (
+            <option key={f} value={f}>
+              {filterLabel(f)}
+            </option>
+          ))}
+        </select>
+      </label>
 
-      <h2 style={{ marginTop: 24 }}>Кейси</h2>
+      <h2 style={{ marginTop: 24 }}>Військовослужбовці</h2>
       {cases === null && <LoadingState />}
       {cases && cases.length === 0 && (
         <EmptyState
-          title="Немає кейсів за обраним фільтром"
-          hint="Спробуйте змінити статус ризику або вибрати «Всі»."
+          title="Немає записів за обраним фільтром"
+          hint="Спробуйте інший рівень ризику."
         />
       )}
       {cases && cases.length > 0 && (
         <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
           {cases.map((c) => (
             <li key={c.user_id} className="kpi-card">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "baseline",
+                  gap: 8,
+                  flexWrap: "wrap",
+                }}
+              >
                 <strong>{c.full_name}</strong>
                 <span style={{ color: STATUS_BG[c.current_risk_status] }}>
                   {STATUS_LABEL[c.current_risk_status]}

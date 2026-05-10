@@ -150,6 +150,17 @@ def _is_due(last_seen: date | None, interval: timedelta, *, today: date) -> bool
     return today - last_seen >= interval
 
 
+def _next_due(last_seen: date | None, interval: timedelta, *, today: date) -> date:
+    """Date when the cadenced item next becomes due. Either now (already
+    past due) or last_seen + interval — whichever is later but never before
+    today."""
+
+    if last_seen is None:
+        return today
+    candidate = last_seen + interval
+    return candidate if candidate >= today else today
+
+
 def completion_summary(
     db: Session, *, user_id: uuid.UUID, day: date
 ) -> dict[str, object]:
@@ -162,6 +173,11 @@ def completion_summary(
             "daily_due": False,
             "weekly_due": False,
             "cognitive_due": False,
+            "reaction_test_due": False,
+            "go_no_go_due": False,
+            "daily_next_due_at": None,
+            "weekly_next_due_at": None,
+            "cognitive_next_due_at": None,
             "last_risk_status": None,
         }
 
@@ -175,13 +191,31 @@ def completion_summary(
 
     last_reaction = _last_cognitive_date(db, ReactionTest, user_id)
     last_go_no_go = _last_cognitive_date(db, GoNoGoTest, user_id)
-    cognitive_due = _is_due(last_reaction, COGNITIVE_INTERVAL, today=day) or _is_due(
-        last_go_no_go, COGNITIVE_INTERVAL, today=day
+    reaction_due = _is_due(last_reaction, COGNITIVE_INTERVAL, today=day)
+    go_no_go_due = _is_due(last_go_no_go, COGNITIVE_INTERVAL, today=day)
+    cognitive_due = reaction_due or go_no_go_due
+
+    # "Next due" is the soonest moment the item can be re-taken. Daily is
+    # tomorrow when already done today; weekly/cognitive use the latest of
+    # their two sub-trackers so the panel matches the OR-style due flag.
+    daily_next = day + timedelta(days=1) if daily_done else day
+    weekly_next = max(
+        _next_due(last_phq4, WEEKLY_INTERVAL, today=day),
+        _next_due(last_pss4, WEEKLY_INTERVAL, today=day),
+    )
+    cognitive_next = max(
+        _next_due(last_reaction, COGNITIVE_INTERVAL, today=day),
+        _next_due(last_go_no_go, COGNITIVE_INTERVAL, today=day),
     )
 
     return {
         "daily_due": not daily_done,
         "weekly_due": weekly_due,
         "cognitive_due": cognitive_due,
+        "reaction_test_due": reaction_due,
+        "go_no_go_due": go_no_go_due,
+        "daily_next_due_at": daily_next,
+        "weekly_next_due_at": weekly_next,
+        "cognitive_next_due_at": cognitive_next,
         "last_risk_status": _current_status(db, user_id),
     }

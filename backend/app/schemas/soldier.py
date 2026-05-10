@@ -89,6 +89,11 @@ class CompletionSummaryResponse(BaseModel):
     daily_due: bool
     weekly_due: bool
     cognitive_due: bool
+    reaction_test_due: bool
+    go_no_go_due: bool
+    daily_next_due_at: date | None
+    weekly_next_due_at: date | None
+    cognitive_next_due_at: date | None
     last_risk_status: RiskStatus | None
 
 

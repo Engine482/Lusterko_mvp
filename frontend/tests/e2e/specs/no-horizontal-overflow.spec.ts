@@ -12,6 +12,9 @@ const ROUTES = [
   "/forgot-password",
   "/reset-password?token=demo-token",
   "/invite?token=demo-token",
+  "/register",
+  "/register/sent?email=test%40example.com",
+  "/register/confirm?token=demo-token",
   "/this-route-does-not-exist",
 ];
 

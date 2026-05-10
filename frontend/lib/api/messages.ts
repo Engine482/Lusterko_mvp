@@ -30,6 +30,10 @@ const COMMON_ERROR_COPY: Record<string, string> = {
   WEAK_PASSWORD: "Пароль має містити мінімум 12 символів.",
   INVALID_PROFILE: "Введіть коректне імʼя.",
   INVALID_ACTIVE_ROLE: "Ця роль вам не призначена.",
+  INVALID_DEMO_TOKEN: "Посилання для реєстрації недійсне або вже використане.",
+  DEMO_TOKEN_EXPIRED: "Посилання для реєстрації застаріло. Зареєструйтесь повторно.",
+  DEMO_EMAIL_TAKEN: "Цей email уже зареєстровано. Увійдіть або скиньте пароль.",
+  DEMO_REGISTRATION_DISABLED: "Demo-реєстрація наразі вимкнена.",
 };
 
 // Generic counterpart of localizeSettingsError for the rest of the app.

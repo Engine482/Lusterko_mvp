@@ -24,6 +24,7 @@ SESSION_COOKIE_NAME = "lusterko_session"
 SESSION_TTL = timedelta(days=30)
 INVITE_TTL = timedelta(days=7)
 PASSWORD_RESET_TTL = timedelta(hours=1)
+DEMO_REGISTRATION_TTL = timedelta(hours=24)
 
 
 def is_secure_cookies() -> bool:

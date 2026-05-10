@@ -1,4 +1,4 @@
-.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-test-up db-migrate db-revision seed seed-demo mcp-list prod-build
+.PHONY: setup setup-backend setup-frontend lint test run run-backend run-frontend db-up db-down db-test-up db-migrate db-revision seed seed-demo seed-demo-unit mcp-list prod-build
 
 setup: setup-backend setup-frontend
 
@@ -46,6 +46,12 @@ seed:
 
 seed-demo:
 	cd backend && uv run python -m scripts.seed_demo $(if $(reset),--reset,)
+
+# Public "Демо-взвод": one unit with 30 soldiers + ~4 weeks of synthetic
+# trends, 10/10/10 risk distribution. Idempotent; pass `reset=1` to drop
+# and recreate. Refuses to run with APP_ENV=production unless FORCE=1.
+seed-demo-unit:
+	cd backend && uv run python -m scripts.seed_demo_unit $(if $(reset),--reset-demo-data,)
 
 mcp-list:
 	claude mcp list

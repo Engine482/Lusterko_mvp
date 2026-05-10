@@ -204,6 +204,11 @@ def test_completion_summary_reflects_state(client: TestClient) -> None:
         "daily_due": False,
         "weekly_due": False,
         "cognitive_due": False,
+        "reaction_test_due": False,
+        "go_no_go_due": False,
+        "daily_next_due_at": None,
+        "weekly_next_due_at": None,
+        "cognitive_next_due_at": None,
         "last_risk_status": None,
     }
     _complete_baseline(client)

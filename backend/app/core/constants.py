@@ -165,4 +165,8 @@ AuditEventType = Literal[
     "password_changed",
     "profile_updated",
     "account_locked",
+    "demo_registration_started",
+    "demo_registration_email_sent",
+    "demo_registration_email_failed",
+    "demo_registration_completed",
 ]

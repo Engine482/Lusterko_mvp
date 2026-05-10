@@ -86,3 +86,27 @@ class ProfileUpdateRequest(BaseModel):
 
 class ProfileUpdateResponse(BaseModel):
     user: UserBrief
+
+
+class AuthConfigResponse(BaseModel):
+    open_registration_enabled: bool
+
+
+class DemoRegisterStartRequest(BaseModel):
+    email: EmailStr
+
+
+class DemoRegisterStartResponse(BaseModel):
+    # Always identical regardless of whether the email matched an existing
+    # active user — anti-enumeration mirrors the password-forgot pattern.
+    queued: bool = True
+
+
+class DemoRegisterConfirmRequest(BaseModel):
+    token: str = Field(..., min_length=10)
+    full_name: str = Field(..., min_length=1, max_length=200)
+    password: str = Field(..., min_length=1)
+
+
+class DemoRegisterConfirmResponse(BaseModel):
+    registered: bool
