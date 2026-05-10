@@ -1,15 +1,9 @@
-"use client";
-
-import { useEffect, useState } from "react";
-
-export default function RegisterSentPage() {
-  const [email, setEmail] = useState("");
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const url = new URL(window.location.href);
-    setEmail(url.searchParams.get("email") ?? "");
-  }, []);
+export default async function RegisterSentPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ email?: string }>;
+}) {
+  const { email = "" } = await searchParams;
 
   return (
     <section className="auth-card">

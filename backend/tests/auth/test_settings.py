@@ -10,7 +10,6 @@ from sqlalchemy import select
 
 from app.db.session import SessionLocal
 from app.models.audit_log import AuditLog
-from app.models.user import User
 from app.models.user_session import UserSession
 from tests.factories import issue_invite_for, make_user
 

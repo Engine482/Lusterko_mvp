@@ -241,7 +241,7 @@ class OpenAIStrategy:
     def analyze(self, text: str) -> CommentAnalysis:
         # Imported lazily so dev/test runs without `openai` installed don't break.
         try:
-            from openai import OpenAI  # type: ignore[import-not-found]
+            from openai import OpenAI
         except ImportError as err:
             raise RuntimeError("openai package not installed") from err
 

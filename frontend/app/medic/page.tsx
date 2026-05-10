@@ -37,9 +37,16 @@ export default function MedicCasesListPage() {
   const [tab, setTab] = useState<CaseTab>("priority");
   const [error, setError] = useState<string | null>(null);
 
+  const filtersKey = `${tab}|${riskFilter}`;
+  const [trackedKey, setTrackedKey] = useState(filtersKey);
+  if (trackedKey !== filtersKey) {
+    setTrackedKey(filtersKey);
+    setCases(null);
+    setError(null);
+  }
+
   useEffect(() => {
     let cancelled = false;
-    setCases(null);
     const status = CASE_TABS.find((t) => t.key === tab)!.backendStatus;
     medicApi
       .listCases({
