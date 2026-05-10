@@ -148,6 +148,7 @@ class LatestAi:
 class CaseNote:
     id: uuid.UUID
     author_user_id: uuid.UUID
+    author_full_name: str
     text: str
     created_at: datetime
 
@@ -266,18 +267,20 @@ def case_detail(
     )
 
     note_rows = db.execute(
-        select(CaseReviewNote)
+        select(CaseReviewNote, User.full_name)
+        .join(User, User.id == CaseReviewNote.author_user_id)
         .where(CaseReviewNote.case_review_id == case_obj.id)
         .order_by(CaseReviewNote.created_at.desc())
-    ).scalars().all()
+    ).all()
     notes = tuple(
         CaseNote(
             id=n.id,
             author_user_id=n.author_user_id,
+            author_full_name=author_full_name,
             text=n.text,
             created_at=n.created_at,
         )
-        for n in note_rows
+        for n, author_full_name in note_rows
     )
 
     return MedicCaseDetail(

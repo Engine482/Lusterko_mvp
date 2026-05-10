@@ -58,6 +58,7 @@ export type MedicCaseDetail = {
   notes: {
     id: string;
     author_user_id: string;
+    author_full_name: string;
     text: string;
     created_at: string;
   }[];
