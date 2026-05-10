@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 const NAV: { href: string; label: string }[] = [
   { href: "/settings/profile", label: "Профіль" },
-  { href: "/settings/security", label: "Безпека" },
+  { href: "/settings/security", label: "Зміна паролю" },
 ];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {

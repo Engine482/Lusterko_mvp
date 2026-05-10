@@ -102,9 +102,9 @@ export default function WeeklyReassessmentPage() {
   if (eligible === false) {
     return (
       <section>
-        <h1>Щотижневе перепроходження</h1>
-        <p>Наступне доступне за тиждень після останнього.</p>
-        <Link className="btn" href="/soldier">На головну</Link>
+        <h1>Щотижнева переоцінка</h1>
+        <p>Наступна доступна за тиждень після попередньої.</p>
+        <Link className="btn" href="/soldier">Повернутися на головну</Link>
       </section>
     );
   }
@@ -114,14 +114,14 @@ export default function WeeklyReassessmentPage() {
       <section>
         <h1>Готово</h1>
         <p>Щотижневі результати збережено.</p>
-        <Link className="btn" href="/soldier">На головну</Link>
+        <Link className="btn" href="/soldier">Повернутися на головну</Link>
       </section>
     );
   }
 
   return (
     <section>
-      <h1>Щотижневе перепроходження</h1>
+      <h1>Щотижнева переоцінка</h1>
       <p>Крок {step === "phq4" ? 1 : 2} з 2.</p>
       {step === "phq4" && (
         <form onSubmit={submitPhq4}>

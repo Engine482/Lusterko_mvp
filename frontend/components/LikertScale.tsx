@@ -9,22 +9,11 @@ type Props = {
 
 export function LikertScale({ label, value, options, onChange }: Props) {
   return (
-    <fieldset
-      style={{
-        border: "1px solid var(--border)",
-        background: "var(--bg-card)",
-        borderRadius: "var(--radius-card)",
-        padding: "12px 16px",
-        marginBottom: 12,
-      }}
-    >
-      <legend style={{ padding: "0 6px" }}>{label}</legend>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+    <div className="likert-scale">
+      <p className="likert-scale__question">{label}</p>
+      <div className="likert-scale__options" role="radiogroup" aria-label={label}>
         {options.map((opt) => (
-          <label
-            key={opt.value}
-            style={{ display: "flex", alignItems: "center", gap: 8 }}
-          >
+          <label key={opt.value} className="likert-scale__option">
             <input
               type="radio"
               checked={value === opt.value}
@@ -34,6 +23,6 @@ export function LikertScale({ label, value, options, onChange }: Props) {
           </label>
         ))}
       </div>
-    </fieldset>
+    </div>
   );
 }

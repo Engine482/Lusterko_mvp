@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 const TRIALS = 10;
 const MIN_DELAY_MS = 1000;
 const MAX_DELAY_MS = 3000;
+const INTER_TRIAL_PAUSE_MS = 700;
 
 type Phase = "instructions" | "waiting" | "ready" | "too_early" | "done";
 
@@ -50,13 +51,20 @@ export function ReactionTest({ onComplete }: Props) {
 
   const handleClick = () => {
     if (phase === "done") return;
-    if (phase === "instructions" || phase === "too_early") {
+    if (phase === "instructions") {
+      // First-tap kicks off the whole sequence; subsequent trials auto-advance.
       startTrial();
+      return;
+    }
+    if (phase === "too_early") {
+      // Premature click — restart this trial automatically after a short beat.
+      timerRef.current = setTimeout(startTrial, INTER_TRIAL_PAUSE_MS);
       return;
     }
     if (phase === "waiting") {
       cleanupTimer();
       setPhase("too_early");
+      timerRef.current = setTimeout(startTrial, INTER_TRIAL_PAUSE_MS);
       return;
     }
     if (phase === "ready" && stimulusAtRef.current !== null) {
@@ -70,7 +78,12 @@ export function ReactionTest({ onComplete }: Props) {
         onComplete({ medianMs: median(next), validTrials: next.length });
       } else {
         setTrial(nextTrial);
-        setPhase("instructions");
+        setPhase("waiting");
+        const delay = MIN_DELAY_MS + Math.random() * (MAX_DELAY_MS - MIN_DELAY_MS);
+        timerRef.current = setTimeout(() => {
+          stimulusAtRef.current = performance.now();
+          setPhase("ready");
+        }, INTER_TRIAL_PAUSE_MS + delay);
       }
     }
   };
@@ -86,23 +99,21 @@ export function ReactionTest({ onComplete }: Props) {
 
   const label =
     phase === "instructions"
-      ? trial === 0
-        ? `Почати — спроба 1 з ${TRIALS}`
-        : `Далі — спроба ${trial + 1} з ${TRIALS}`
+      ? `Почати — ${TRIALS} спроб поспіль`
       : phase === "waiting"
-        ? "Чекайте…"
+        ? `Чекайте сигналу… (${trial + 1}/${TRIALS})`
         : phase === "ready"
-          ? "Натисніть!"
-          : "Зарано — натисніть, щоб повторити";
+          ? `Натисніть! (${trial + 1}/${TRIALS})`
+          : "Зарано — повторюємо спробу";
 
   const ariaHint =
     phase === "instructions"
-      ? "Натискайте, як тільки поле стане синім."
+      ? "Після старту спроби йтимуть автоматично. Натискайте, щойно поле стане синім."
       : phase === "ready"
         ? "Стимул показано — натисніть зараз."
         : phase === "waiting"
-          ? "Очікування стимулу. Не натискайте, доки поле не стане синім."
-          : "Передчасне натискання. Натисніть, щоб повторити спробу.";
+          ? "Очікування сигналу. Не натискайте, доки поле не стане синім."
+          : "Передчасне натискання. Спроба повториться автоматично.";
 
   return (
     <button

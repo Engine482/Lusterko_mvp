@@ -62,7 +62,7 @@ export default function SoldierHomePage() {
       <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
         {!onboarding.baseline_completed && (
           <li className="kpi-card">
-            <strong>Завершіть baseline</strong>
+            <strong>Завершіть базовий профіль</strong>
             <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
               {onboarding.steps.filter((s) => s.completed).length} з 5 кроків
             </div>
@@ -80,7 +80,7 @@ export default function SoldierHomePage() {
 
         {onboarding.baseline_completed && summary.daily_due && (
           <li className="kpi-card">
-            <strong>Daily check-in</strong>
+            <strong>Щоденне опитування</strong>
             <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
               4 короткі шкали і опціональний коментар.
             </div>
@@ -96,7 +96,7 @@ export default function SoldierHomePage() {
 
         {onboarding.baseline_completed && !summary.daily_due && (
           <li className="kpi-card">
-            <strong>Daily — виконано</strong>
+            <strong>Щоденне опитування — виконано</strong>
             <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
               Поверніться завтра.
             </div>
@@ -105,7 +105,7 @@ export default function SoldierHomePage() {
 
         {onboarding.baseline_completed && summary.weekly_due && (
           <li className="kpi-card">
-            <strong>Щотижневе перепроходження</strong>
+            <strong>Щотижнева переоцінка</strong>
             <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
               PHQ-4 + PSS-4. Займе кілька хвилин.
             </div>
@@ -121,7 +121,7 @@ export default function SoldierHomePage() {
 
         {onboarding.baseline_completed && summary.cognitive_due && (
           <li className="kpi-card">
-            <strong>Когнітивні задачі</strong>
+            <strong>Когнітивні завдання</strong>
             <div style={{ fontSize: "0.875rem", marginTop: 4 }}>
               Тест реакції та Go / No-Go.
             </div>

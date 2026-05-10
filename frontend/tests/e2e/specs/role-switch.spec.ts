@@ -2,8 +2,7 @@ import { expect, test } from "@playwright/test";
 
 import { demoBackendConfigured, loginViaApi } from "../fixtures/auth";
 
-// EPIC role switching is already implemented (RoleSwitcher.tsx). Spec verifies
-// that current role is clearly visible and a multi-role demo user can switch.
+// Role switching now lives in the burger nav: open menu → "Змінити роль" → /role.
 
 test.describe("role switching", () => {
   test.skip(!demoBackendConfigured(), "needs multi-role E2E_DEMO_EMAIL/E2E_DEMO_PASSWORD");
@@ -11,9 +10,10 @@ test.describe("role switching", () => {
   test("multi-role user can switch active role", async ({ page, request }) => {
     await loginViaApi(request, page);
     await page.goto("/admin");
-    // Open the role-switcher menu, then pick a different role.
-    await page.getByRole("button", { name: /Перемкнути активну роль/ }).click();
-    await page.getByRole("menuitem", { name: /Командир/ }).click();
+    await page.getByRole("button", { name: "Відкрити меню" }).click();
+    await page.getByRole("menuitem", { name: "Змінити роль" }).click();
+    await expect(page).toHaveURL(/\/role/);
+    await page.getByRole("button", { name: /Командир/ }).click();
     await expect(page).toHaveURL(/\/commander/);
   });
 });

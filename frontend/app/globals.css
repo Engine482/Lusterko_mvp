@@ -21,6 +21,14 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Block iOS Safari auto-zoom on focus: any input < 16px triggers zoom. */
+input,
+select,
+textarea {
+  font-family: inherit;
+  font-size: max(16px, 1rem);
+}
+
 h1,
 h2,
 h3 {
@@ -150,12 +158,15 @@ a:focus-visible {
   background: #f87171;
 }
 
-/* ── Settings link / icon-button-style controls ── */
+/* ── Settings nav (in-page side nav, not the app burger) ── */
 
-.settings-link,
-.logout-button,
-.role-switcher__current,
-.role-switcher__menu button,
+.settings__nav {
+  display: flex;
+  gap: var(--space-3);
+  margin: var(--space-3) 0 var(--space-5);
+  flex-wrap: wrap;
+}
+
 .settings__nav a {
   border: 1px solid var(--border-strong);
   background: transparent;
@@ -171,12 +182,6 @@ a:focus-visible {
   transition: background var(--transition-base);
 }
 
-.settings-link:hover,
-.settings-link:focus-visible,
-.logout-button:hover:not(:disabled),
-.logout-button:focus-visible,
-.role-switcher__current:hover,
-.role-switcher__menu button:hover,
 .settings__nav a:hover,
 .settings__nav a:focus-visible {
   background: var(--bg-card-hover);
@@ -184,59 +189,133 @@ a:focus-visible {
   text-decoration: none;
 }
 
-.logout-button:disabled {
+/* ── Top app nav (burger + role badge) ── */
+
+.app-nav {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.app-nav__role-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  white-space: nowrap;
+}
+
+.app-nav__burger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tap-target);
+  height: var(--tap-target);
+  padding: 0;
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  color: var(--text-primary);
+}
+
+.app-nav__burger:hover,
+.app-nav__burger:focus-visible {
+  background: var(--bg-card-hover);
+}
+
+.app-nav__burger-icon {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 20px;
+}
+
+.app-nav__burger-icon span {
+  display: block;
+  height: 2px;
+  background: currentColor;
+  border-radius: 1px;
+}
+
+.app-nav__menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--space-2));
+  min-width: 240px;
+  max-width: calc(100vw - 2 * var(--page-pad-x));
+  padding: var(--space-1);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  z-index: 20;
+}
+
+.app-nav__item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  min-height: var(--tap-target);
+  transition: background var(--transition-base), color var(--transition-base);
+}
+
+.app-nav__item:hover,
+.app-nav__item:focus-visible {
+  background: var(--bg-card-hover);
+  color: var(--text-primary);
+  text-decoration: none;
+}
+
+.app-nav__item--danger {
+  color: var(--status-danger);
+}
+
+.app-nav__item--danger:hover:not(:disabled),
+.app-nav__item--danger:focus-visible {
+  background: var(--status-danger-bg);
+  color: var(--status-danger);
+}
+
+.app-nav__item:disabled {
   opacity: 0.5;
   cursor: progress;
 }
 
-.logout-button__error {
+.app-nav__error {
+  display: block;
+  padding: 6px 10px;
   color: var(--status-danger);
   font-size: var(--font-size-sm);
-  margin-left: var(--space-2);
 }
 
-/* ── Settings nav ── */
-
-.settings__nav {
-  display: flex;
-  gap: var(--space-3);
-  margin: var(--space-3) 0 var(--space-5);
-  flex-wrap: wrap;
-}
-
-/* ── Role switcher ── */
-
-.role-switcher {
-  position: relative;
-}
-
-.role-switcher__menu {
-  position: absolute;
-  right: 0;
-  top: 110%;
-  margin: 0;
-  padding: var(--space-1);
-  list-style: none;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 200px;
-  z-index: 10;
-  box-shadow: var(--shadow-popover);
-}
-
-.role-switcher__menu button {
-  width: 100%;
-  text-align: left;
-  border-color: transparent;
-}
-
-.role-switcher__error {
-  color: var(--status-danger);
-  font-size: var(--font-size-sm);
+@media (max-width: 480px) {
+  .app-nav__role-badge {
+    display: none;
+  }
+  .app-nav__menu {
+    right: calc(-1 * var(--page-pad-x));
+    left: calc(-1 * var(--page-pad-x));
+    min-width: 0;
+    max-width: none;
+  }
 }
 
 /* ── Forms ── */
@@ -499,6 +578,36 @@ a:focus-visible {
   border-radius: var(--radius-pill);
   padding: 2px 10px;
   color: var(--text-secondary);
+}
+
+/* ── Likert scale (PHQ-4 / PSS-4 weekly) ── */
+
+.likert-scale {
+  margin-bottom: var(--space-3);
+}
+
+.likert-scale__question {
+  margin: 0 0 var(--space-2);
+  font-weight: var(--font-weight-medium);
+  color: var(--text-primary);
+}
+
+.likert-scale__options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  border-radius: var(--radius-card);
+}
+
+.likert-scale__option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-target);
+  cursor: pointer;
 }
 
 /* ── Demo disclaimer ── */

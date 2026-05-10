@@ -57,7 +57,7 @@ export default function CommanderDashboardPage() {
 
   return (
     <section>
-      <h1>Дашборд командира</h1>
+      <h1>Стан підрозділу</h1>
       {summary.unit_id === null && (
         <div className="alert alert--info">
           Вашому акаунту не призначено підрозділ. Зверніться до адміна.

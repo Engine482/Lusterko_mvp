@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { soldierApi, type CompletionSummary } from "@/lib/api/soldier";
 import { humanError } from "@/lib/api/messages";
+import { RISK_LABEL } from "@/lib/labels";
 
 // Wireframes P0 §5.15 — Completion Summary.
 export default function SoldierSummaryPage() {
@@ -34,20 +35,23 @@ export default function SoldierSummaryPage() {
       <h1>Підсумок</h1>
       <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
         <li className="kpi-card">
-          Daily: {summary.daily_due ? "Потрібно пройти" : "Виконано"}
+          Щоденне опитування: {summary.daily_due ? "Потрібно пройти" : "Виконано"}
         </li>
         <li className="kpi-card">
-          Weekly: {summary.weekly_due ? "Потрібно пройти" : "Виконано"}
+          Щотижнева переоцінка: {summary.weekly_due ? "Потрібно пройти" : "Виконано"}
         </li>
         <li className="kpi-card">
-          Cognitive: {summary.cognitive_due ? "Потрібно пройти" : "Виконано"}
+          Когнітивні завдання: {summary.cognitive_due ? "Потрібно пройти" : "Виконано"}
         </li>
         <li className="kpi-card">
-          Поточний risk: {summary.last_risk_status ?? "ще не обчислюється"}
+          Поточний ризик:{" "}
+          {summary.last_risk_status
+            ? RISK_LABEL[summary.last_risk_status]
+            : "ще не обчислюється"}
         </li>
       </ul>
       <p style={{ marginTop: 16 }}>
-        <Link href="/soldier">Повернутися на головний</Link>
+        <Link href="/soldier">Повернутися на головну</Link>
       </p>
     </section>
   );

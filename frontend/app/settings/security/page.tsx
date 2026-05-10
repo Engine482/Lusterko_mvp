@@ -49,11 +49,7 @@ export default function SettingsSecurityPage() {
 
   return (
     <form className="form-grid" onSubmit={submit} noValidate>
-      <h2>Безпека</h2>
-      <p>
-        Змінити пароль. Поточну сесію збережено; інші пристрої треба буде увійти
-        повторно.
-      </p>
+      <h2>Зміна паролю</h2>
       <label>
         Поточний пароль
         <input
@@ -91,7 +87,7 @@ export default function SettingsSecurityPage() {
       </button>
       {success && (
         <div className="alert alert--success" role="status">
-          Пароль змінено. Інші пристрої треба буде увійти повторно.
+          Пароль змінено
         </div>
       )}
       {error && <div className="alert alert--error" role="alert">{error}</div>}

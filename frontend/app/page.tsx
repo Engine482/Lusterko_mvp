@@ -3,16 +3,13 @@ export default function HomePage() {
     <section>
       <h1>Люстерко</h1>
       <p>
-        MVP — система моніторингу психологічного стану за запрошенням.
+        Люстерко — MVP системи моніторингу психологічного стану особового
+        складу.
       </p>
       <p style={{ marginTop: 16 }}>
         <a href="/login" className="btn">
           Увійти
         </a>
-      </p>
-      <p className="text-muted" style={{ fontSize: "0.875rem", marginTop: 24 }}>
-        Новий користувач? Перейдіть за посиланням з інвайт-листа,
-        отриманого від адміністратора.
       </p>
     </section>
   );

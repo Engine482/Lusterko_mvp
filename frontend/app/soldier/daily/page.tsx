@@ -61,7 +61,7 @@ export default function DailyCheckinPage() {
 
   return (
     <section>
-      <h1>Daily check-in</h1>
+      <h1>Щоденне опитування</h1>
       <p>Швидко оцініть стан за сьогодні. Кожна шкала: 0 — погано, 10 — чудово.</p>
       <form onSubmit={submit}>
         {SCALES.map((s) => (

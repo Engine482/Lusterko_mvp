@@ -11,14 +11,14 @@ export const ROLE_LABEL: Record<Role, string> = {
 
 export const RISK_LABEL: Record<RiskStatus, string> = {
   green: "Норма",
-  yellow: "Увага",
-  red: "Ризик",
+  yellow: "Потребує уваги",
+  red: "Високий ризик",
   insufficient_data: "Недостатньо даних",
 };
 
 export const CASE_STATUS_LABEL: Record<CaseStatus, string> = {
-  new: "Нове",
-  in_review: "У роботі",
+  new: "Пріоритетні",
+  in_review: "В роботі",
   monitoring: "Моніторинг",
-  closed: "Закрите",
+  closed: "Закриті",
 };

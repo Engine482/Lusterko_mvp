@@ -8,8 +8,9 @@ import { ROLE_LABEL } from "@/lib/labels";
 import type { Role } from "@/types/enums";
 
 const ROLE_DESCRIPTION: Record<Role, string> = {
-  soldier: "Проходити baseline, daily і когнітивні перевірки.",
-  commander: "Бачити стан підрозділу і пріоритетні випадки.",
+  soldier:
+    "Проходити базовий профіль, щоденні опитування та когнітивні завдання.",
+  commander: "Бачити стан підрозділу і пріоритетні кейси.",
   medic_psych: "Працювати з ризиковими кейсами і додавати нотатки.",
   admin: "Створювати користувачів, видавати інвайти, керувати ролями.",
 };
