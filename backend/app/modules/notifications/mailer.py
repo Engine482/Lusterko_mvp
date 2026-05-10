@@ -336,11 +336,19 @@ def _build_from_env() -> Mailer:
     provider = os.environ.get("LUSTERKO_MAILER", "auto").lower()
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
     if provider == "stub":
+        logger.info("mailer_init", extra={"mailer": "stub", "reason": "explicit"})
         return StubMailer()
     if provider == "smtp" or (provider == "auto" and smtp_host):
         if not smtp_host:
+            # `LUSTERKO_MAILER=smtp` without SMTP_HOST is a misconfiguration —
+            # surface it loudly in logs so it does not silently fall back to
+            # the no-op stub in production.
+            logger.warning(
+                "mailer_init_missing_smtp_host",
+                extra={"provider": provider},
+            )
             return StubMailer()
-        return SmtpMailer(
+        mailer = SmtpMailer(
             host=smtp_host,
             port=int(os.environ.get("SMTP_PORT", "587")),
             username=os.environ.get("SMTP_USER", ""),
@@ -348,6 +356,29 @@ def _build_from_env() -> Mailer:
             use_tls=os.environ.get("SMTP_USE_TLS", "true").lower() != "false",
             from_email=os.environ.get("INVITE_FROM_EMAIL", ""),
         )
+        logger.info(
+            "mailer_init",
+            extra={
+                "mailer": "smtp",
+                "host": mailer.host,
+                "port": mailer.port,
+                "username": mailer.username or "(unset)",
+                "from_email": mailer.from_email or "(uses username)",
+                "use_tls": mailer.use_tls,
+            },
+        )
+        return mailer
+    # provider=auto with no SMTP_HOST. In dev this is normal; in prod it
+    # means demo registration / password-reset emails will be silently
+    # discarded. Warn so Railway logs surface the misconfig.
+    logger.warning(
+        "mailer_init_stub_fallback",
+        extra={
+            "provider": provider,
+            "smtp_host_present": bool(smtp_host),
+            "hint": "set SMTP_HOST + SMTP_USER + SMTP_PASSWORD + INVITE_FROM_EMAIL",
+        },
+    )
     return StubMailer()
 
 

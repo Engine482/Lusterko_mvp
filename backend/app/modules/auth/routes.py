@@ -15,6 +15,7 @@ Implementation notes:
 from __future__ import annotations
 
 import ipaddress
+import logging
 
 from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy import select
@@ -60,6 +61,7 @@ from app.schemas.auth import (
 from app.schemas.common import UserBrief
 from app.services.audit_logger import log_event
 
+logger = logging.getLogger("lusterko.auth")
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
@@ -420,18 +422,34 @@ def demo_register_start(
 
     rl.record_failure(db, key=key, ip_address=ip)
 
+    # Default to "sent" so the existing-user / disabled / rate-limited paths
+    # are indistinguishable from real success. Only the freshly-issued path
+    # below downgrades to "failed" when the mailer surfaces an SMTP error.
+    email_dispatch: str = "sent"
+
     if not auth_service.email_belongs_to_active_user(db, email=payload.email):
         issued = auth_service.start_demo_registration(db, email=payload.email)
         confirm_url = mailer_mod.build_demo_registration_url(
             settings.app_public_base_url, issued.token
         )
-        result = mailer_mod.get_mailer().send_demo_registration(
+        mailer = mailer_mod.get_mailer()
+        result = mailer.send_demo_registration(
             mailer_mod.DemoRegistrationEmail(
                 to_email=issued.registration.email,
                 confirm_url=confirm_url,
                 expires_at_iso=issued.registration.expires_at.isoformat(),
             )
         )
+        if not result.ok:
+            email_dispatch = "failed"
+            logger.warning(
+                "demo_registration_email_failed",
+                extra={
+                    "to": issued.registration.email,
+                    "mailer": mailer.name,
+                    "error": result.error,
+                },
+            )
         log_event(
             db,
             event_type=(
@@ -440,11 +458,19 @@ def demo_register_start(
             ),
             entity_type="demo_registrations",
             entity_id=issued.registration.id,
-            metadata={"error": result.error} if result.error else None,
+            metadata={
+                "mailer": mailer.name,
+                **({"error": result.error} if result.error else {}),
+            },
         )
 
     db.commit()
-    return success_response(DemoRegisterStartResponse(queued=True).model_dump())
+    return success_response(
+        DemoRegisterStartResponse(
+            queued=True,
+            email_dispatch=email_dispatch,  # type: ignore[arg-type]
+        ).model_dump()
+    )
 
 
 @router.post("/demo/register/confirm")

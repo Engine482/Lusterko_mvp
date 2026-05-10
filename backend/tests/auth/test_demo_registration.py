@@ -222,3 +222,85 @@ def test_demo_register_token_single_use(
     )
     assert second.status_code == 400
     assert second.json()["error"]["code"] == "INVALID_DEMO_TOKEN"
+
+
+def test_demo_register_start_reports_email_dispatch_sent(
+    client: TestClient, monkeypatch
+) -> None:
+    """Successful path advertises `email_dispatch=sent` so the frontend can
+    redirect to the «Перевірте пошту» screen with confidence."""
+
+    _enable_open_registration(monkeypatch)
+    _stub_mailer()
+
+    res = client.post(
+        "/api/v1/auth/demo/register/start",
+        json={"email": "ok@tester.lusterko.io"},
+    )
+    assert res.status_code == 200
+    body = res.json()["data"]
+    assert body["queued"] is True
+    assert body["email_dispatch"] == "sent"
+
+
+def test_demo_register_start_reports_email_dispatch_failed_on_smtp_error(
+    client: TestClient, monkeypatch
+) -> None:
+    """When the mailer surfaces an SMTP error we must NOT pretend success.
+    The frontend reads `email_dispatch=failed` and shows an honest message
+    instead of "Перевірте пошту". P0.3 fix for prod silent-success bug."""
+
+    _enable_open_registration(monkeypatch)
+
+    class FailingMailer:
+        name = "failing"
+
+        def send_invite(self, msg: mailer_mod.InviteEmail) -> mailer_mod.SendResult:
+            return mailer_mod.SendResult(ok=False, error="connection refused")
+
+        def send_password_reset(
+            self, msg: mailer_mod.PasswordResetEmail
+        ) -> mailer_mod.SendResult:
+            return mailer_mod.SendResult(ok=False, error="connection refused")
+
+        def send_demo_registration(
+            self, msg: mailer_mod.DemoRegistrationEmail
+        ) -> mailer_mod.SendResult:
+            return mailer_mod.SendResult(ok=False, error="connection refused")
+
+    mailer_mod.set_mailer(FailingMailer())
+    try:
+        res = client.post(
+            "/api/v1/auth/demo/register/start",
+            json={"email": "smtp-broken@tester.lusterko.io"},
+        )
+        assert res.status_code == 200
+        body = res.json()["data"]
+        # Anti-enumeration: outer envelope still says queued.
+        assert body["queued"] is True
+        # But the dispatch field is honest — the frontend must NOT redirect
+        # to /register/sent on this response.
+        assert body["email_dispatch"] == "failed"
+    finally:
+        mailer_mod.set_mailer(None)
+
+
+def test_demo_register_start_existing_user_reports_sent_for_anti_enumeration(
+    client: TestClient, monkeypatch
+) -> None:
+    """An attacker probing with a known email must see the same envelope as
+    a real success — including `email_dispatch=sent`. Otherwise the field
+    leaks user existence."""
+
+    _enable_open_registration(monkeypatch)
+    _stub_mailer()
+    make_user(email="existing@tester.lusterko.io", roles=("soldier",))
+
+    res = client.post(
+        "/api/v1/auth/demo/register/start",
+        json={"email": "existing@tester.lusterko.io"},
+    )
+    assert res.status_code == 200
+    body = res.json()["data"]
+    assert body["queued"] is True
+    assert body["email_dispatch"] == "sent"

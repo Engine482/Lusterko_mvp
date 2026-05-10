@@ -33,7 +33,17 @@ export default function RegisterPage() {
     setSubmitting(true);
     setError(null);
     try {
-      await authApi.demoRegisterStart(email.trim());
+      const res = await authApi.demoRegisterStart(email.trim());
+      if (res.email_dispatch === "failed") {
+        // Backend issued the registration but the mailer surfaced an SMTP
+        // error. Show an honest message instead of the «Перевірте пошту»
+        // success screen — P0.3 fix for the prod silent-success bug.
+        setError(
+          "Не вдалося надіслати лист підтвердження. Спробуйте ще раз або зверніться до адміністратора.",
+        );
+        setSubmitting(false);
+        return;
+      }
       window.location.assign(
         `/register/sent?email=${encodeURIComponent(email.trim())}`,
       );
