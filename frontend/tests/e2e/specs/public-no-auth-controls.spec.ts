@@ -21,6 +21,6 @@ for (const path of PUBLIC_ROUTES) {
       page.getByRole("button", { name: /Вийти/ }),
     ).toHaveCount(0);
     // Brand stays visible.
-    await expect(page.getByText("Люстерко", { exact: true })).toBeVisible();
+    await expect(page.locator(".app-shell__brand")).toBeVisible();
   });
 }
