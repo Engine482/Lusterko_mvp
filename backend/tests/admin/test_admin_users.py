@@ -114,6 +114,39 @@ def test_unauthenticated_admin_call_rejected(client: TestClient) -> None:
     assert res.json()["error"]["code"] == "UNAUTHORIZED"
 
 
+def test_admin_users_list_tolerates_reserved_tld_emails(
+    client: TestClient,
+) -> None:
+    """Regression: `GET /admin/users` 500'd in prod because the seeded demo
+    soldiers used `@demo-platoon.lusterko.local` and pydantic `EmailStr`
+    rejects `.local` (RFC 6762 mDNS reserved TLD). Output schema must be
+    lenient enough to pass already-persisted users through.
+    """
+
+    from app.models.user import User
+    from app.models.user_role import UserRole
+
+    # Insert a soldier with a reserved-TLD email straight via the model,
+    # bypassing any pydantic input validation — mirrors what the seed does.
+    with SessionLocal() as db:
+        boets = User(
+            email="boets99@demo-platoon.lusterko.local",
+            full_name="Боєць 99",
+            status="active",
+        )
+        db.add(boets)
+        db.flush()
+        db.add(UserRole(user_id=boets.id, role="soldier"))
+        db.commit()
+
+    _login(client, email="admin-tld@example.com", roles=("admin",))
+    res = client.get("/api/v1/admin/users")
+    assert res.status_code == 200, res.text
+    payload = res.json()["data"]
+    emails = [item["email"] for item in payload["items"]]
+    assert "boets99@demo-platoon.lusterko.local" in emails
+
+
 def test_inactive_user_session_denied(client: TestClient) -> None:
     """Deactivated user with a still-existing session loses access immediately."""
 
