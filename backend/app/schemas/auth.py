@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel, EmailStr, Field
 
 from app.core.constants import Role
@@ -97,9 +99,15 @@ class DemoRegisterStartRequest(BaseModel):
 
 
 class DemoRegisterStartResponse(BaseModel):
-    # Always identical regardless of whether the email matched an existing
-    # active user — anti-enumeration mirrors the password-forgot pattern.
+    # Anti-enumeration: `queued` and `email_dispatch` stay identical
+    # regardless of whether the email matched an existing active user, was
+    # rate-limited, or hit a turned-off flag — those paths all report
+    # `sent` so callers cannot distinguish them from a real success.
+    # `failed` is reserved for genuine SMTP misfires on a freshly-issued
+    # registration so the frontend can show an honest error instead of
+    # "Перевірте пошту" when the mailer is misconfigured (P0.3).
     queued: bool = True
+    email_dispatch: Literal["sent", "failed"] = "sent"
 
 
 class DemoRegisterConfirmRequest(BaseModel):
