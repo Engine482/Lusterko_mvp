@@ -14,9 +14,9 @@ const CASE_LABEL: Record<CaseStatus, string> = {
   closed: "Закрите",
 };
 
-const STATUS_OPTIONS: CaseStatus[] = ["new", "in_review", "monitoring", "closed"];
-
 // Wireframes P0 §7.2 — Medic Detailed Case View.
+// P1: explicit «Взяти в роботу» / «Закрити кейс» buttons replace the
+// generic status dropdown so the QA spec's manual workflow is exact.
 export default function MedicCaseDetailPage({
   params,
 }: {
@@ -28,7 +28,6 @@ export default function MedicCaseDetailPage({
   const [actionMsg, setActionMsg] = useState<string | null>(null);
   const [noteText, setNoteText] = useState("");
   const [busy, setBusy] = useState(false);
-  const [statusDraft, setStatusDraft] = useState<CaseStatus | null>(null);
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -38,7 +37,6 @@ export default function MedicCaseDetailPage({
       .then((res) => {
         if (cancelled) return;
         setDetail(res);
-        setStatusDraft(res.case_status);
       })
       .catch((err) => {
         if (!cancelled) setError(humanError(err));
@@ -51,14 +49,12 @@ export default function MedicCaseDetailPage({
   if (error) return <div className="alert alert--error">{error}</div>;
   if (!detail) return <p>Завантаження…</p>;
 
-  const submitStatus = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!statusDraft || statusDraft === detail.case_status) return;
+  const moveStatus = async (next: CaseStatus, successMsg: string) => {
     setBusy(true);
     setActionMsg(null);
     try {
-      await medicApi.updateStatus(case_id, statusDraft);
-      setActionMsg("Статус оновлено.");
+      await medicApi.updateStatus(case_id, next);
+      setActionMsg(successMsg);
       setReload((n) => n + 1);
     } catch (err) {
       setActionMsg(humanError(err));
@@ -75,7 +71,7 @@ export default function MedicCaseDetailPage({
     try {
       await medicApi.addNote(case_id, noteText.trim());
       setNoteText("");
-      setActionMsg("Нотатку додано.");
+      setActionMsg("Коментар додано.");
       setReload((n) => n + 1);
     } catch (err) {
       setActionMsg(humanError(err));
@@ -83,6 +79,10 @@ export default function MedicCaseDetailPage({
       setBusy(false);
     }
   };
+
+  const canTakeIntoWork = detail.case_status === "new";
+  const canClose = detail.case_status !== "closed";
+  const isNormalRisk = detail.risk.current_risk_status === "green";
 
   return (
     <section>
@@ -139,47 +139,61 @@ export default function MedicCaseDetailPage({
       </div>
 
       <h2 style={{ marginTop: 24 }}>Дії</h2>
-      <form onSubmit={submitStatus} style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <select
-          value={statusDraft ?? detail.case_status}
-          onChange={(e) => setStatusDraft(e.target.value as CaseStatus)}
-        >
-          {STATUS_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {CASE_LABEL[s]}
-            </option>
-          ))}
-        </select>
-        <button type="submit" className="btn" disabled={busy}>
-          Оновити статус
-        </button>
-      </form>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        {canTakeIntoWork && (
+          <button
+            type="button"
+            className="btn"
+            onClick={() => moveStatus("in_review", "Кейс взято в роботу.")}
+            disabled={busy}
+          >
+            Взяти в роботу
+          </button>
+        )}
+        {canClose && (
+          <button
+            type="button"
+            className="btn btn--ghost"
+            onClick={() => moveStatus("closed", "Кейс закрито.")}
+            disabled={busy}
+          >
+            Закрити кейс
+          </button>
+        )}
+      </div>
+      {canClose && isNormalRisk && (
+        <p className="text-muted" style={{ marginTop: 8, fontSize: "0.875rem" }}>
+          Поточний ризик: Норма. Кейс можна закрити після перевірки.
+        </p>
+      )}
 
-      <form onSubmit={submitNote} style={{ marginTop: 16 }}>
+      <h2 style={{ marginTop: 24 }}>Коментарі</h2>
+      <form onSubmit={submitNote}>
         <textarea
           value={noteText}
           onChange={(e) => setNoteText(e.target.value.slice(0, 4000))}
           rows={3}
-          placeholder="Нотатка медика"
+          placeholder="Коментар психолога"
+          aria-label="Текст коментаря"
           style={{ width: "100%", padding: 8 }}
         />
         <button type="submit" className="btn" disabled={busy || !noteText.trim()}>
-          Додати нотатку
+          Додати коментар
         </button>
       </form>
       {actionMsg && <p style={{ marginTop: 8 }}>{actionMsg}</p>}
 
-      <h2 style={{ marginTop: 24 }}>Нотатки</h2>
       {detail.notes.length === 0 ? (
-        <p>Немає нотаток.</p>
+        <p style={{ marginTop: 16 }}>Немає коментарів.</p>
       ) : (
-        <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8 }}>
+        <ul style={{ listStyle: "none", padding: 0, display: "grid", gap: 8, marginTop: 16 }}>
           {detail.notes.map((n) => (
             <li key={n.id} className="kpi-card">
               <div className="text-muted" style={{ fontSize: "0.8125rem" }}>
+                {n.author_full_name} ·{" "}
                 {new Date(n.created_at).toLocaleString("uk-UA")}
               </div>
-              <div style={{ marginTop: 4 }}>{n.text}</div>
+              <div style={{ marginTop: 4, whiteSpace: "pre-wrap" }}>{n.text}</div>
             </li>
           ))}
         </ul>

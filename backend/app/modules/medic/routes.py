@@ -117,6 +117,7 @@ def _detail_payload(detail: queries.MedicCaseDetail) -> dict[str, object]:
             {
                 "id": str(n.id),
                 "author_user_id": str(n.author_user_id),
+                "author_full_name": n.author_full_name,
                 "text": n.text,
                 "created_at": n.created_at.isoformat(),
             }
