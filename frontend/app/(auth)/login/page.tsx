@@ -1,17 +1,43 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { RegisterCta } from "@/components/RegisterCta";
 import { authApi } from "@/lib/api/auth";
 import { humanError } from "@/lib/api/messages";
 
-// Sprint 7 — email+password login screen.
+const ROLE_HOME: Record<string, string> = {
+  soldier: "/soldier",
+  commander: "/commander",
+  medic_psych: "/medic",
+  admin: "/admin",
+};
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    authApi
+      .me()
+      .then((me) => {
+        if (cancelled) return;
+        if (me.role_selection_required) {
+          window.location.replace("/role");
+        } else if (me.active_role) {
+          window.location.replace(ROLE_HOME[me.active_role]);
+        }
+      })
+      .catch(() => {
+        // Not authenticated — stay on the login form.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,19 +45,12 @@ export default function LoginPage() {
     setError(null);
     try {
       await authApi.login(email, password);
-      // /me decides where to send us next (role selection or role home).
       const me = await authApi.me();
       if (me.role_selection_required) {
         window.location.assign("/role");
         return;
       }
-      const home: Record<string, string> = {
-        soldier: "/soldier",
-        commander: "/commander",
-        medic_psych: "/medic",
-        admin: "/admin",
-      };
-      window.location.assign(me.active_role ? home[me.active_role] : "/");
+      window.location.assign(me.active_role ? ROLE_HOME[me.active_role] : "/");
     } catch (err) {
       setError(humanError(err));
     } finally {
@@ -41,7 +60,12 @@ export default function LoginPage() {
 
   return (
     <section className="auth-card">
-      <h1>Вхід у Люстерко</h1>
+      <h1>Люстерко</h1>
+      <p className="auth-card__intro">
+        Люстерко — MVP системи моніторингу психологічного стану особового
+        складу.
+      </p>
+      <h2>Вхід</h2>
       <form className="form-grid" onSubmit={submit} noValidate>
         <label>
           Email

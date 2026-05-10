@@ -5,7 +5,10 @@ import { expect, test } from "@playwright/test";
 
 test("login page renders header brand and form", async ({ page }) => {
   await page.goto("/login");
-  await expect(page.getByText("Люстерко", { exact: true })).toBeVisible();
+  await expect(page.locator(".app-shell__brand")).toBeVisible();
+  // Product intro above the form (P0.2).
+  await expect(page.getByRole("heading", { name: "Люстерко" })).toBeVisible();
+  await expect(page.getByText(/MVP системи моніторингу/)).toBeVisible();
   await expect(page.getByRole("heading", { name: /Вхід/ })).toBeVisible();
   await expect(page.getByLabel("Email")).toBeVisible();
   await expect(page.getByLabel("Пароль")).toBeVisible();
