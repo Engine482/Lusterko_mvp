@@ -10,7 +10,7 @@ test("register page renders form fields", async ({ page }) => {
   // Either the form (flag on) or the disabled copy (flag off) — both must
   // render *something* without crashing and without horizontal overflow.
   await expect(
-    page.getByText(/Demo-реєстрація|Реєстрація недоступна/),
+    page.getByRole("heading", { name: /Demo-реєстрація|Реєстрація недоступна/ }),
   ).toBeVisible();
 });
 
