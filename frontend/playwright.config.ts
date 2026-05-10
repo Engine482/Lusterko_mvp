@@ -4,6 +4,9 @@ const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:3001";
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Production smoke specs live under tests/e2e/prod/ and are run via the
+  // dedicated `playwright.prod.config.ts` against the deployed app.
+  testIgnore: ["**/prod/**"],
   timeout: 30_000,
   expect: { timeout: 5_000 },
   fullyParallel: true,

@@ -12,7 +12,8 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
-    "test:smoke": "playwright test --project=desktop-chromium --project=mobile-iphone-se tests/e2e/specs/public-shell.spec.ts tests/e2e/specs/public-no-auth-controls.spec.ts tests/e2e/specs/smoke.spec.ts tests/e2e/specs/register.spec.ts tests/e2e/specs/not-found.spec.ts tests/e2e/specs/no-horizontal-overflow.spec.ts"
+    "test:smoke": "playwright test --project=desktop-chromium --project=mobile-iphone-se tests/e2e/specs/public-shell.spec.ts tests/e2e/specs/public-no-auth-controls.spec.ts tests/e2e/specs/smoke.spec.ts tests/e2e/specs/register.spec.ts tests/e2e/specs/not-found.spec.ts tests/e2e/specs/no-horizontal-overflow.spec.ts",
+    "test:prod-smoke": "playwright test --config=playwright.prod.config.ts"
   },
   "dependencies": {
     "next": "^16.2.4",
