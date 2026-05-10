@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { authApi, type AuthMe } from "@/lib/api/auth";
@@ -20,6 +20,8 @@ export function getHomeRouteForRole(role: Role | null): string {
 }
 
 export function AppNav() {
+  const router = useRouter();
+  const pathname = usePathname();
   const [me, setMe] = useState<AuthMe | null>(null);
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -63,6 +65,21 @@ export function AppNav() {
   const activeRoleLabel = me.active_role ? ROLE_LABEL[me.active_role] : "—";
 
   const close = () => setOpen(false);
+
+  const goHome = () => {
+    setOpen(false);
+    if (pathname === home) {
+      // Already there — give the tap visible feedback by scrolling to top.
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    router.push(home);
+  };
+
+  const goTo = (path: string) => {
+    setOpen(false);
+    router.push(path);
+  };
 
   const logout = async () => {
     setSubmitting(true);
@@ -122,31 +139,31 @@ export function AppNav() {
             >
               ✕
             </button>
-            <Link
-              className="app-nav__item"
+            <button
+              type="button"
               role="menuitem"
-              href={home}
-              onClick={close}
+              className="app-nav__item"
+              onClick={goHome}
             >
               Головна
-            </Link>
-            <Link
-              className="app-nav__item"
+            </button>
+            <button
+              type="button"
               role="menuitem"
-              href="/settings/profile"
-              onClick={close}
+              className="app-nav__item"
+              onClick={() => goTo("/settings/profile")}
             >
               Налаштування
-            </Link>
+            </button>
             {multiRole && (
-              <Link
-                className="app-nav__item"
+              <button
+                type="button"
                 role="menuitem"
-                href="/role"
-                onClick={close}
+                className="app-nav__item"
+                onClick={() => goTo("/role")}
               >
                 Змінити роль
-              </Link>
+              </button>
             )}
             <button
               type="button"

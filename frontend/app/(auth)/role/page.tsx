@@ -31,7 +31,12 @@ export default function RoleSelectionPage() {
     authApi
       .me()
       .then((res) => {
-        if (!res.role_selection_required && res.active_role) {
+        // Bounce only when there is literally no choice to make: a single
+        // role and an active session. Multi-role users who reach /role via
+        // the «Змінити роль» menu item must always see the picker, even
+        // when `role_selection_required` is false (they've already picked
+        // once and are explicitly switching).
+        if (res.roles.length <= 1 && res.active_role) {
           window.location.assign(HOME_PATH[res.active_role]);
           return;
         }
