@@ -68,3 +68,41 @@ jobs:
         run: pnpm lint
       - name: Typecheck
         run: pnpm exec tsc --noEmit
+
+  smoke-e2e:
+    name: Frontend smoke (Playwright)
+    runs-on: ubuntu-latest
+    needs: frontend
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.0.3
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install deps
+        run: pnpm install --frozen-lockfile
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Build app
+        run: pnpm build
+      - name: Run smoke specs (Playwright manages server)
+        run: pnpm test:smoke
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: frontend/playwright-report/
+          retention-days: 7

@@ -13,6 +13,20 @@ export default defineConfig({
     ["list"],
     ["html", { outputFolder: "playwright-report", open: "never" }],
   ],
+  // Per the project's "Next 16 Turbopack vs Playwright" note: the e2e
+  // suite must run against `pnpm start` (production mode), not `pnpm dev`.
+  // CI builds the app first; locally the same `pnpm build` is required
+  // before `pnpm test:smoke` (or set E2E_NO_WEBSERVER=1 to manage the
+  // server yourself). `reuseExistingServer` lets devs keep one server
+  // running between iterations.
+  webServer: process.env.E2E_NO_WEBSERVER
+    ? undefined
+    : {
+        command: "pnpm exec next start -p 3001",
+        url: baseURL,
+        reuseExistingServer: !process.env.CI,
+        timeout: 120_000,
+      },
   use: {
     baseURL,
     trace: "retain-on-failure",
