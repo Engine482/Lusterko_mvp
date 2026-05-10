@@ -72,3 +72,4 @@ backups/
 
 # macOS/Linux misc
 .cache/
+playwright-report-prod/
