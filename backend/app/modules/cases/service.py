@@ -1,9 +1,9 @@
 """Case lifecycle (Risk Engine §13 + Backlog EPIC-51).
 
-Auto-open rules:
-- §13.1: a fresh case is opened when status becomes `red`, OR when the last
-  three risk events for the user are all `yellow` (persistent yellow).
-- §13.2: never duplicate. If the user already has a non-closed case, the new
+Auto-open rules (P0.6 update — was: red OR persistent-yellow only):
+- a fresh case is opened when status becomes `red` or `yellow`;
+- normal/insufficient_data never open a case;
+- never duplicate. If the user already has a non-closed case, the new
   risk_event is just attached to it (priority bump implicit by recency of
   `last_risk_event_id`).
 
@@ -55,16 +55,6 @@ def open_case_for(db: Session, *, user_id: uuid.UUID) -> CaseReview | None:
     ).scalar_one_or_none()
 
 
-def _last_three_statuses(db: Session, *, user_id: uuid.UUID) -> list[str]:
-    rows = db.execute(
-        select(RiskEvent.new_status)
-        .where(RiskEvent.user_id == user_id)
-        .order_by(RiskEvent.created_at.desc())
-        .limit(3)
-    ).scalars().all()
-    return list(rows)
-
-
 def maybe_open_case(
     db: Session,
     *,
@@ -79,13 +69,9 @@ def maybe_open_case(
 
     existing = open_case_for(db, user_id=user_id)
 
-    should_open = False
-    if risk_event.new_status == "red":
-        should_open = True
-    elif risk_event.new_status == "yellow":
-        recent = _last_three_statuses(db, user_id=user_id)
-        if len(recent) == 3 and all(s == "yellow" for s in recent):
-            should_open = True
+    # P0.6: yellow and red both open a case on the first signal.
+    # Normal / insufficient_data never open a psychologist case.
+    should_open = risk_event.new_status in ("red", "yellow")
 
     if existing is not None:
         # De-dup: just attach the new event so the dashboards bump priority.

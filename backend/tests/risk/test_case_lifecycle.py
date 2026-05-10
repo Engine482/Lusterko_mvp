@@ -61,29 +61,90 @@ def test_red_status_opens_case_once(client: TestClient) -> None:
     assert len(opened_audit) == 1
 
 
-def test_persistent_yellow_opens_case_after_three_events(client: TestClient) -> None:
-    _login(client, "case-yellow@example.com")
-    _complete_baseline(client)
-    # Three writes that each push the user to yellow without hard flags.
-    # PHQ-4 ≥6 → emotional +1, PSS-4 ≥8 → emotional +1, plus one more write.
-    client.post("/api/v1/soldier/weekly/phq4", json={"answers": [3, 3, 3, 3]})
-    client.post("/api/v1/soldier/weekly/pss4", json={"answers": [3, 3, 0, 0]})
-    # Mild functional drop to keep the score in yellow band.
-    client.post(
-        "/api/v1/soldier/daily-checkins",
-        json={
-            "sleep_score": 5,
-            "energy_score": 5,
-            "mood_score": 5,
-            "concentration_score": 5,
-        },
-    )
+def test_yellow_opens_case_on_first_event() -> None:
+    """P0.6 — single yellow event opens a case (was: persistent yellow only).
+    Spec: «Жовтий ризик створює або оновлює відкритий кейс».
+    Driven through `maybe_open_case` directly to keep the assertion
+    deterministic regardless of where the score lands in the engine."""
+
+    from app.models.daily_checkin import DailyCheckin
+    from app.models.risk_event import RiskEvent
+    from app.modules.cases.service import maybe_open_case
+
+    target = make_user(email="case-yellow-direct@example.com", roles=("soldier",))
     with SessionLocal() as db:
-        cases = db.execute(select(CaseReview)).scalars().all()
-    # If all three events landed yellow, exactly one case opens. If any one
-    # event was green/red, the persistent rule won't fire — assert at least
-    # the de-dup invariant holds (no more than one open case).
-    assert len(cases) <= 1
+        # Use a real daily-checkin row as `source_event_id` so the FK-style
+        # invariants the project relies on are not ducked.
+        from datetime import date
+        daily = DailyCheckin(
+            user_id=target.id,
+            checkin_date=date.today(),
+            sleep_score=5,
+            energy_score=5,
+            mood_score=5,
+            concentration_score=5,
+        )
+        db.add(daily)
+        db.flush()
+        event = RiskEvent(
+            user_id=target.id,
+            new_status="yellow",
+            previous_status="green",
+            total_score=4,
+            hard_flag=None,
+            source_event_type="daily_checkin",
+            source_event_id=daily.id,
+        )
+        db.add(event)
+        db.flush()
+        case = maybe_open_case(db, user_id=target.id, risk_event=event)
+        db.commit()
+        assert case is not None
+        assert case.status == "new"
+        cases = db.execute(
+            select(CaseReview).where(CaseReview.user_id == target.id)
+        ).scalars().all()
+        assert len(cases) == 1
+
+
+def test_normal_does_not_open_case() -> None:
+    """P0.6 — green / insufficient_data must NEVER open a psychologist case."""
+
+    from app.models.daily_checkin import DailyCheckin
+    from app.models.risk_event import RiskEvent
+    from app.modules.cases.service import maybe_open_case
+
+    target = make_user(email="case-green@example.com", roles=("soldier",))
+    with SessionLocal() as db:
+        for status in ("green", "insufficient_data"):
+            from datetime import date, timedelta
+            daily = DailyCheckin(
+                user_id=target.id,
+                checkin_date=date.today() - timedelta(days=1 if status == "green" else 2),
+                sleep_score=8,
+                energy_score=8,
+                mood_score=8,
+                concentration_score=8,
+            )
+            db.add(daily)
+            db.flush()
+            event = RiskEvent(
+                user_id=target.id,
+                new_status=status,
+                previous_status="green",
+                total_score=0,
+                hard_flag=None,
+                source_event_type="daily_checkin",
+                source_event_id=daily.id,
+            )
+            db.add(event)
+            db.flush()
+            assert maybe_open_case(db, user_id=target.id, risk_event=event) is None
+        db.commit()
+        cases = db.execute(
+            select(CaseReview).where(CaseReview.user_id == target.id)
+        ).scalars().all()
+        assert cases == []
 
 
 def test_no_duplicate_case_on_repeated_red(client: TestClient) -> None:
