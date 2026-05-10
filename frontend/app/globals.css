@@ -243,21 +243,51 @@ a:focus-visible {
   border-radius: 1px;
 }
 
+.app-nav__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 19;
+}
+
+/* Mobile-first: full-height right drawer pinned to the viewport so the
+   menu cannot overflow regardless of header layout. */
 .app-nav__menu {
-  position: absolute;
+  position: fixed;
+  top: 0;
   right: 0;
-  top: calc(100% + var(--space-2));
-  min-width: 240px;
-  max-width: calc(100vw - 2 * var(--page-pad-x));
-  padding: var(--space-1);
+  bottom: 0;
+  width: min(320px, 90vw);
+  max-width: 320px;
+  padding: var(--space-4) var(--space-3) var(--space-3);
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-left: 1px solid var(--border);
   box-shadow: var(--shadow-popover);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
   z-index: 20;
+  overflow-y: auto;
+}
+
+.app-nav__close {
+  align-self: flex-end;
+  width: var(--tap-target);
+  height: var(--tap-target);
+  margin-bottom: var(--space-2);
+  padding: 0;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+}
+
+.app-nav__close:hover,
+.app-nav__close:focus-visible {
+  background: var(--bg-card-hover);
 }
 
 .app-nav__item {
@@ -310,11 +340,29 @@ a:focus-visible {
   .app-nav__role-badge {
     display: none;
   }
+}
+
+/* Desktop: shrink the drawer back into a popover anchored to the burger. */
+@media (min-width: 769px) {
+  .app-nav__backdrop {
+    display: none;
+  }
   .app-nav__menu {
-    right: calc(-1 * var(--page-pad-x));
-    left: calc(-1 * var(--page-pad-x));
-    min-width: 0;
-    max-width: none;
+    position: absolute;
+    top: calc(100% + var(--space-2));
+    right: 0;
+    bottom: auto;
+    width: auto;
+    min-width: 240px;
+    max-width: calc(100vw - 2 * var(--page-pad-x));
+    padding: var(--space-1);
+    border: 1px solid var(--border);
+    border-left: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: visible;
+  }
+  .app-nav__close {
+    display: none;
   }
 }
 
