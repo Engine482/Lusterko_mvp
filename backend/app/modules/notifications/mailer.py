@@ -3,10 +3,13 @@
 Mirrors the AI-parser strategy pattern (see `app/modules/ai/parser.py`):
 - `StubMailer` records sent messages in-memory; default for dev/test, no IO.
 - `SmtpMailer` talks to a real SMTP server via stdlib `smtplib` + STARTTLS.
+- `ResendApiMailer` talks to Resend over HTTPS — required on PaaS hosts
+  (Railway, Render, Vercel) that block outbound SMTP ports.
 
-Selection: `LUSTERKO_MAILER=stub|smtp|auto`. `auto` (default) picks `smtp` if
-`SMTP_HOST` is set, otherwise `stub`. Tests can call `set_mailer()` to inject
-a sentinel without touching env.
+Selection: `LUSTERKO_MAILER=stub|smtp|resend|auto`. `auto` (default) picks
+the first applicable: `resend` if `RESEND_API_KEY` is set, otherwise `smtp`
+if `SMTP_HOST` is set, otherwise `stub`. Tests can call `set_mailer()` to
+inject a sentinel without touching env.
 
 Errors never propagate to the caller. Invite creation and password-reset
 issuance must keep working even if the SMTP server is misconfigured — the
@@ -20,7 +23,9 @@ import os
 import smtplib
 from dataclasses import dataclass, field
 from email.message import EmailMessage
-from typing import Protocol
+from typing import Any, Protocol
+
+import httpx
 
 logger = logging.getLogger("lusterko.mailer")
 
@@ -326,6 +331,109 @@ class SmtpMailer:
         return self._send(em, msg.to_email, kind="demo_registration")
 
 
+@dataclass
+class ResendApiMailer:
+    """Sends through Resend's HTTPS API (`POST https://api.resend.com/emails`).
+
+    Required on Railway / Render / Vercel: those PaaS hosts block outbound
+    SMTP ports, so `SmtpMailer` will reliably time out against any provider.
+    Resend's HTTP API rides on 443 and is unaffected. The class implements
+    the same `Mailer` protocol so callers don't care which strategy is live.
+    """
+
+    name: str = "resend"
+    api_key: str = ""
+    from_email: str = ""
+    api_url: str = "https://api.resend.com/emails"
+
+    def _post(
+        self, *, to_email: str, subject: str, text: str, html: str, kind: str
+    ) -> SendResult:
+        payload: dict[str, Any] = {
+            "from": self.from_email,
+            "to": [to_email],
+            "subject": subject,
+            "text": text,
+            "html": html,
+        }
+        try:
+            resp = httpx.post(
+                self.api_url,
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json=payload,
+                timeout=10,
+            )
+        except Exception as err:  # noqa: BLE001 — mailer must never propagate
+            logger.warning(
+                f"{kind}_email_resend_exception",
+                extra={"to": to_email, "error": str(err)},
+            )
+            return SendResult(ok=False, error=str(err))
+
+        if resp.status_code >= 400:
+            # Truncate body so a verbose JSON error doesn't blow up the
+            # audit-log metadata column.
+            snippet = resp.text[:200] if resp.text else ""
+            logger.warning(
+                f"{kind}_email_resend_failed",
+                extra={"to": to_email, "status": resp.status_code, "body": snippet},
+            )
+            return SendResult(
+                ok=False,
+                error=f"resend_http_{resp.status_code}: {snippet}",
+            )
+        return SendResult(ok=True)
+
+    def send_invite(self, msg: InviteEmail) -> SendResult:
+        return self._post(
+            to_email=msg.to_email,
+            subject=_INVITE_SUBJECT,
+            text=_INVITE_PLAINTEXT.format(
+                full_name=msg.to_full_name,
+                invite_url=msg.invite_url,
+                expires_at=msg.expires_at_iso,
+            ),
+            html=_INVITE_HTML.format(
+                full_name=msg.to_full_name,
+                invite_url=msg.invite_url,
+                expires_at=msg.expires_at_iso,
+            ),
+            kind="invite",
+        )
+
+    def send_password_reset(self, msg: PasswordResetEmail) -> SendResult:
+        return self._post(
+            to_email=msg.to_email,
+            subject=_RESET_SUBJECT,
+            text=_RESET_PLAINTEXT.format(
+                full_name=msg.to_full_name,
+                reset_url=msg.reset_url,
+                expires_at=msg.expires_at_iso,
+            ),
+            html=_RESET_HTML.format(
+                full_name=msg.to_full_name,
+                reset_url=msg.reset_url,
+                expires_at=msg.expires_at_iso,
+            ),
+            kind="password_reset",
+        )
+
+    def send_demo_registration(self, msg: DemoRegistrationEmail) -> SendResult:
+        return self._post(
+            to_email=msg.to_email,
+            subject=_DEMO_REG_SUBJECT,
+            text=_DEMO_REG_PLAINTEXT.format(
+                confirm_url=msg.confirm_url,
+                expires_at=msg.expires_at_iso,
+            ),
+            html=_DEMO_REG_HTML.format(
+                confirm_url=msg.confirm_url,
+                expires_at=msg.expires_at_iso,
+            ),
+            kind="demo_registration",
+        )
+
+
 # --- Selection --------------------------------------------------------------
 
 
@@ -335,9 +443,31 @@ _MAILER: Mailer | None = None
 def _build_from_env() -> Mailer:
     provider = os.environ.get("LUSTERKO_MAILER", "auto").lower()
     smtp_host = os.environ.get("SMTP_HOST", "").strip()
+    resend_key = os.environ.get("RESEND_API_KEY", "").strip()
+    from_email = os.environ.get("INVITE_FROM_EMAIL", "").strip()
+
     if provider == "stub":
         logger.info("mailer_init", extra={"mailer": "stub", "reason": "explicit"})
         return StubMailer()
+
+    if provider == "resend" or (provider == "auto" and resend_key):
+        if not resend_key:
+            logger.warning(
+                "mailer_init_missing_resend_key",
+                extra={"provider": provider},
+            )
+            return StubMailer()
+        mailer = ResendApiMailer(api_key=resend_key, from_email=from_email)
+        logger.info(
+            "mailer_init",
+            extra={
+                "mailer": "resend",
+                "from_email": mailer.from_email or "(unset)",
+                "api_url": mailer.api_url,
+            },
+        )
+        return mailer
+
     if provider == "smtp" or (provider == "auto" and smtp_host):
         if not smtp_host:
             # `LUSTERKO_MAILER=smtp` without SMTP_HOST is a misconfiguration —
@@ -348,35 +478,40 @@ def _build_from_env() -> Mailer:
                 extra={"provider": provider},
             )
             return StubMailer()
-        mailer = SmtpMailer(
+        smtp_mailer = SmtpMailer(
             host=smtp_host,
             port=int(os.environ.get("SMTP_PORT", "587")),
             username=os.environ.get("SMTP_USER", ""),
             password=os.environ.get("SMTP_PASSWORD", ""),
             use_tls=os.environ.get("SMTP_USE_TLS", "true").lower() != "false",
-            from_email=os.environ.get("INVITE_FROM_EMAIL", ""),
+            from_email=from_email,
         )
         logger.info(
             "mailer_init",
             extra={
                 "mailer": "smtp",
-                "host": mailer.host,
-                "port": mailer.port,
-                "username": mailer.username or "(unset)",
-                "from_email": mailer.from_email or "(uses username)",
-                "use_tls": mailer.use_tls,
+                "host": smtp_mailer.host,
+                "port": smtp_mailer.port,
+                "username": smtp_mailer.username or "(unset)",
+                "from_email": smtp_mailer.from_email or "(uses username)",
+                "use_tls": smtp_mailer.use_tls,
             },
         )
-        return mailer
-    # provider=auto with no SMTP_HOST. In dev this is normal; in prod it
-    # means demo registration / password-reset emails will be silently
-    # discarded. Warn so Railway logs surface the misconfig.
+        return smtp_mailer
+
+    # provider=auto with neither RESEND_API_KEY nor SMTP_HOST. In dev this
+    # is normal; in prod it means demo-registration / password-reset emails
+    # will be silently discarded. Warn so Railway logs surface the misconfig.
     logger.warning(
         "mailer_init_stub_fallback",
         extra={
             "provider": provider,
+            "resend_key_present": bool(resend_key),
             "smtp_host_present": bool(smtp_host),
-            "hint": "set SMTP_HOST + SMTP_USER + SMTP_PASSWORD + INVITE_FROM_EMAIL",
+            "hint": (
+                "set RESEND_API_KEY + INVITE_FROM_EMAIL (preferred for PaaS), "
+                "or SMTP_HOST + SMTP_USER + SMTP_PASSWORD + INVITE_FROM_EMAIL"
+            ),
         },
     )
     return StubMailer()
