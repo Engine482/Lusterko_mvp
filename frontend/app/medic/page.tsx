@@ -7,21 +7,16 @@ import { medicApi, type MedicCaseRow } from "@/lib/api/medic";
 import { humanError } from "@/lib/api/messages";
 import { CASE_STATUS_LABEL, RISK_LABEL } from "@/lib/labels";
 import { EmptyState, LoadingState } from "@/components/UiState";
-import type { CaseStatus, RiskStatus } from "@/types/enums";
+import type { CaseStatus } from "@/types/enums";
 
-type RiskFilter = RiskStatus | "all";
-type CaseTab = "priority" | "in_review" | "closed";
+// P0.6: Тільки активно-небезпечні рівні (Норма / Недостатньо даних не є кейсом).
+type RiskFilter = "all" | "red" | "yellow";
+type CaseTab = "new" | "in_review" | "closed";
 
-const RISK_FILTERS: RiskFilter[] = [
-  "all",
-  "red",
-  "yellow",
-  "insufficient_data",
-  "green",
-];
+const RISK_FILTERS: RiskFilter[] = ["all", "red", "yellow"];
 
 const CASE_TABS: { key: CaseTab; label: string; backendStatus: CaseStatus }[] = [
-  { key: "priority", label: "Пріоритетні", backendStatus: "new" },
+  { key: "new", label: "Нові", backendStatus: "new" },
   { key: "in_review", label: "В роботі", backendStatus: "in_review" },
   { key: "closed", label: "Закриті", backendStatus: "closed" },
 ];
@@ -34,7 +29,7 @@ function riskFilterLabel(value: RiskFilter): string {
 export default function MedicCasesListPage() {
   const [cases, setCases] = useState<MedicCaseRow[] | null>(null);
   const [riskFilter, setRiskFilter] = useState<RiskFilter>("all");
-  const [tab, setTab] = useState<CaseTab>("priority");
+  const [tab, setTab] = useState<CaseTab>("new");
   const [error, setError] = useState<string | null>(null);
 
   const filtersKey = `${tab}|${riskFilter}`;

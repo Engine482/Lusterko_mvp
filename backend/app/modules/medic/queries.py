@@ -51,7 +51,8 @@ def list_priority_cases(
 ) -> list[MedicCaseRow]:
     """Open cases first, ordered by red > yellow > insufficient_data > green
     and then by recency. Closed cases are included only when explicitly
-    filtered for."""
+    filtered for; they are sorted by `closed_at desc` (most-recently-closed
+    first) per the QA spec for the Закриті tab."""
 
     risk_rank = case(
         (RiskStatusRow.current_risk_status == "red", 0),
@@ -74,14 +75,21 @@ def list_priority_cases(
         .join(User, User.id == CaseReview.user_id)
         .outerjoin(RiskStatusRow, RiskStatusRow.user_id == CaseReview.user_id)
         .where(User.unit_id == unit_id)
-        .order_by(risk_rank, CaseReview.opened_at.desc())
         .limit(limit)
     )
 
-    if case_status_filter is not None:
-        stmt = stmt.where(CaseReview.status == case_status_filter)
+    if case_status_filter == "closed":
+        stmt = stmt.where(CaseReview.status == "closed").order_by(
+            CaseReview.closed_at.desc()
+        )
+    elif case_status_filter is not None:
+        stmt = stmt.where(CaseReview.status == case_status_filter).order_by(
+            risk_rank, CaseReview.opened_at.desc()
+        )
     else:
-        stmt = stmt.where(CaseReview.status != "closed")
+        stmt = stmt.where(CaseReview.status != "closed").order_by(
+            risk_rank, CaseReview.opened_at.desc()
+        )
 
     if risk_filter is not None:
         stmt = stmt.where(RiskStatusRow.current_risk_status == risk_filter)
